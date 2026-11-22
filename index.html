@@ -120,6 +120,12 @@ const {data:profile,error}=await db
 .eq("id",user.id)
 .single();
 
+  console.log("PROFILE CHECK:", {
+  userId: user.id,
+  profile,
+  error
+});
+
 if(error) throw error;
 
 if(!profile) throw new Error("الحساب غير موجود");
