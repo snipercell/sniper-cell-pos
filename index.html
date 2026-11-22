@@ -120,16 +120,6 @@ const {data:profile,error}=await db
 .eq("id",user.id)
 .single();
 
-  const checkBox = document.createElement("pre");
-checkBox.style.cssText = "background:#222;color:#0f0;padding:12px;margin:10px;white-space:pre-wrap;direction:ltr;";
-checkBox.textContent = JSON.stringify({
-  userId: user.id,
-  profile,
-  error: error ? error.message : null
-}, null, 2);
-
-document.body.appendChild(checkBox);
-
 if(error) throw error;
 
 if(!profile) throw new Error("الحساب غير موجود");
