@@ -5,27 +5,208 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SNIPER CELL POS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-body{font-family:Arial;background:#101827;color:white;margin:0;padding:20px}
-header{text-align:center;padding:25px}
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:white;font-family:Arial,sans-serif;padding:20px}
+header{text-align:center;padding:20px}
 h1{color:#55aaff}
-.container{max-width:600px;margin:auto}
-.card{background:#1d293b;padding:20px;margin:15px 0;border-radius:14px}
-input,button{width:100%;padding:14px;margin-top:10px;border-radius:8px;border:0;font-size:16px}
-button{background:#2878df;color:white;font-weight:bold}
+.card{background:#1d293b;padding:22px;border-radius:14px;margin:18px auto;max-width:500px}
+input,select,button{width:100%;padding:14px;margin:9px 0;border-radius:8px;border:0;font-size:16px}
+button{background:#2878df;color:white;font-weight:bold;cursor:pointer}
+button:disabled{opacity:.5}
+.hidden{display:none}
+.info{background:#263b54;padding:15px;border-radius:10px;margin:12px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:#263b54;padding:20px 8px;border-radius:10px;text-align:center}
+#message{color:#ffb3a7;white-space:pre-wrap;line-height:1.6}
 </style>
 </head>
 <body>
+
 <header>
 <h1>SNIPER CELL</h1>
-<p>نظام إدارة المحلات</p>
+<p>POINT OF SALE & MANAGEMENT</p>
 </header>
-<div class="container">
-<div class="card">
-<h2>نظام المحاسبة</h2>
-<p>إدارة الفروع والمبيعات والمشتريات والمخزون</p>
-<button onclick="alert('مرحباً بك في SNIPER CELL')">دخول البرنامج</button>
+
+<section class="card" id="login">
+<h2>تسجيل الدخول</h2>
+<input id="email" type="email" placeholder="البريد الإلكتروني">
+<input id="password" type="password" placeholder="كلمة المرور">
+<button id="loginBtn" onclick="login()">دخول</button>
+<div id="message"></div>
+</section>
+
+<section class="card hidden" id="dashboard">
+<h2 id="welcome">أهلاً بك</h2>
+<div class="info">
+<div>الاسم: <b id="userName"></b></div>
+<div>الصلاحية: <b id="userRole"></b></div>
+<div>الفرع: <b id="branchName"></b></div>
 </div>
+
+<div id="branchPicker" class="hidden">
+<label>اختيار الفرع</label>
+<select id="branchSelect" onchange="selectBranch()"></select>
 </div>
+
+<h3>القائمة الرئيسية</h3>
+<div class="grid">
+<div class="tile">🛒<br>المبيعات</div>
+<div class="tile">📦<br>المشتريات</div>
+<div class="tile">🏷️<br>المخزون</div>
+<div class="tile">🔧<br>الصيانة</div>
+<div class="tile">💵<br>الصندوق</div>
+<div class="tile">📊<br>التقارير</div>
+</div>
+
+<button onclick="logout()">تسجيل الخروج</button>
+<div id="appMessage"></div>
+</section>
+
+<script>
+const SUPABASE_URL =
+"https://mtcnhlrvolyhdreuvlpg.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_jey_P0EhKVoX5EdNLOjyMw_nB0Yl3eV";
+
+const db = window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
+);
+
+let currentProfile = null;
+let availableBranches = [];
+
+function message(text){
+document.getElementById("message").textContent=text;
+}
+
+async function login(){
+const email=document.getElementById("email").value.trim();
+const password=document.getElementById("password").value;
+const btn=document.getElementById("loginBtn");
+
+if(!email || !password){
+message("أدخل البريد الإلكتروني وكلمة المرور");
+return;
+}
+
+btn.disabled=true;
+message("جارٍ تسجيل الدخول...");
+
+try{
+const {data,error}=await db.auth.signInWithPassword({
+email,password
+});
+
+if(error) throw error;
+
+await loadProfile(data.user);
+
+}catch(error){
+message("خطأ: "+error.message);
+}
+
+btn.disabled=false;
+}
+
+async function loadProfile(user){
+
+const {data:profile,error}=await db
+.from("profiles")
+.select("id,full_name,role,active,is_super_admin,branch_id")
+.eq("id",user.id)
+.single();
+
+if(error) throw error;
+
+if(!profile) throw new Error("الحساب غير موجود");
+
+if(profile.active !== true){
+throw new Error("الحساب غير مفعّل");
+}
+
+currentProfile=profile;
+
+const {data:branches,error:branchError}=await db
+.from("branches")
+.select("id,name")
+.eq("active",true);
+
+if(branchError) throw branchError;
+
+if(profile.is_super_admin === true){
+availableBranches=branches || [];
+}else{
+availableBranches=(branches || []).filter(
+b=>b.id === profile.branch_id
+);
+}
+
+if(availableBranches.length===0){
+throw new Error("لا يوجد فرع مسموح لهذا الحساب");
+}
+
+document.getElementById("login").classList.add("hidden");
+document.getElementById("dashboard").classList.remove("hidden");
+
+document.getElementById("userName").textContent=profile.full_name;
+document.getElementById("userRole").textContent=profile.role;
+
+const picker=document.getElementById("branchPicker");
+const select=document.getElementById("branchSelect");
+
+if(profile.is_super_admin === true){
+picker.classList.remove("hidden");
+select.innerHTML="";
+
+availableBranches.forEach(branch=>{
+const option=document.createElement("option");
+option.value=branch.id;
+option.textContent=branch.name;
+select.appendChild(option);
+});
+
+}else{
+picker.classList.add("hidden");
+}
+
+selectBranch();
+}
+
+function selectBranch(){
+const selected=document.getElementById("branchSelect").value;
+
+const branch=availableBranches.find(
+b=>b.id===selected
+);
+
+if(!branch) return;
+
+document.getElementById("branchName").textContent=branch.name;
+
+document.getElementById("appMessage").textContent=
+"تم اختيار الفرع بنجاح";
+}
+
+async function logout(){
+await db.auth.signOut();
+currentProfile=null;
+availableBranches=[];
+document.getElementById("dashboard").classList.add("hidden");
+document.getElementById("login").classList.remove("hidden");
+document.getElementById("password").value="";
+message("");
+}
+
+db.auth.onAuthStateChange((event,session)=>{
+if(event==="SIGNED_OUT"){
+document.getElementById("dashboard").classList.add("hidden");
+document.getElementById("login").classList.remove("hidden");
+}
+});
+</script>
 </body>
 </html>
