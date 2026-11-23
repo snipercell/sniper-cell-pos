@@ -130,6 +130,16 @@ throw new Error("الحساب غير مفعّل");
 
 currentProfile=profile;
 
+const { data: myAssignments, error: myAssignmentsError } = await db
+  .from("user_branches")
+  .select("branch_id")
+  .eq("user_id", user.id);
+
+if (myAssignmentsError) throw myAssignmentsError;
+
+document.getElementById("appMessage").textContent =
+  "الفروع المسموحة: " + (myAssignments || []).length;
+
 const { data: branches, error: branchError } = await db
   .from("branches")
   .select("id,name")
