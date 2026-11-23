@@ -5,66 +5,146 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SNIPER CELL POS</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#101827;color:white;font-family:Arial,sans-serif;padding:20px}
-header{text-align:center;padding:20px}
+
+body{
+  margin:0;
+  background:#101827;
+  color:white;
+  font-family:Arial,sans-serif;
+  padding:20px;
+}
+
+header{
+  text-align:center;
+  padding:20px;
+}
+
 h1{color:#55aaff}
-.card{background:#1d293b;padding:22px;border-radius:14px;margin:18px auto;max-width:500px}
-input,select,button{width:100%;padding:14px;margin:9px 0;border-radius:8px;border:0;font-size:16px}
-button{background:#2878df;color:white;font-weight:bold;cursor:pointer}
+
+.card{
+  background:#1d293b;
+  padding:22px;
+  border-radius:14px;
+  margin:18px auto;
+  max-width:500px;
+}
+
+input,select,button{
+  width:100%;
+  padding:14px;
+  margin:9px 0;
+  border-radius:8px;
+  border:0;
+  font-size:16px;
+}
+
+button{
+  background:#2878df;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+
 button:disabled{opacity:.5}
+
 .hidden{display:none}
-.info{background:#263b54;padding:15px;border-radius:10px;margin:12px 0}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.tile{background:#263b54;padding:20px 8px;border-radius:10px;text-align:center}
-#message{color:#ffb3a7;white-space:pre-wrap;line-height:1.6}
+
+.info{
+  background:#263b54;
+  padding:15px;
+  border-radius:10px;
+  margin:12px 0;
+  line-height:2;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.tile{
+  background:#263b54;
+  padding:20px 8px;
+  border-radius:10px;
+  text-align:center;
+}
+
+#message{
+  color:#ffb3a7;
+  white-space:pre-wrap;
+  line-height:1.6;
+}
+
+#appMessage{
+  background:#263b54;
+  padding:12px;
+  margin-top:15px;
+  border-radius:8px;
+  line-height:1.8;
+  overflow-wrap:anywhere;
+}
 </style>
 </head>
+
 <body>
 
 <header>
-<h1>SNIPER CELL</h1>
-<p>POINT OF SALE & MANAGEMENT</p>
+  <h1>SNIPER CELL</h1>
+  <p>POINT OF SALE & MANAGEMENT</p>
 </header>
 
 <section class="card" id="login">
-<h2>تسجيل الدخول</h2>
-<input id="email" type="email" placeholder="البريد الإلكتروني">
-<input id="password" type="password" placeholder="كلمة المرور">
-<button id="loginBtn" onclick="login()">دخول</button>
-<div id="message"></div>
+  <h2>تسجيل الدخول</h2>
+
+  <input id="email" type="email" placeholder="البريد الإلكتروني">
+
+  <input id="password" type="password" placeholder="كلمة المرور">
+
+  <button id="loginBtn" onclick="login()">دخول</button>
+
+  <div id="message"></div>
 </section>
 
 <section class="card hidden" id="dashboard">
-<h2 id="welcome">أهلاً بك</h2>
-<div class="info">
-<div>الاسم: <b id="userName"></b></div>
-<div>الصلاحية: <b id="userRole"></b></div>
-<div>الفرع: <b id="branchName"></b></div>
-</div>
 
-<div id="branchPicker" class="hidden">
-<label>اختيار الفرع</label>
-<select id="branchSelect" onchange="selectBranch()"></select>
-</div>
+  <h2 id="welcome">أهلاً بك</h2>
 
-<h3>القائمة الرئيسية</h3>
-<div class="grid">
-<div class="tile">🛒<br>المبيعات</div>
-<div class="tile">📦<br>المشتريات</div>
-<div class="tile">🏷️<br>المخزون</div>
-<div class="tile">🔧<br>الصيانة</div>
-<div class="tile">💵<br>الصندوق</div>
-<div class="tile">📊<br>التقارير</div>
-</div>
+  <div class="info">
+    <div>الاسم: <b id="userName"></b></div>
+    <div>الصلاحية: <b id="userRole"></b></div>
+    <div>الفرع: <b id="branchName"></b></div>
+  </div>
 
-<button onclick="logout()">تسجيل الخروج</button>
-<div id="appMessage"></div>
+  <div id="branchPicker" class="hidden">
+    <label>اختيار الفرع</label>
+    <select id="branchSelect"></select>
+  </div>
+
+  <h3>القائمة الرئيسية</h3>
+
+  <div class="grid">
+    <div class="tile">🛒<br>المبيعات</div>
+    <div class="tile">📦<br>المشتريات</div>
+    <div class="tile">🏷️<br>المخزون</div>
+    <div class="tile">🔧<br>الصيانة</div>
+    <div class="tile">💵<br>الصندوق</div>
+    <div class="tile">📊<br>التقارير</div>
+  </div>
+
+  <div id="appMessage"></div>
+
+  <button onclick="logout()">تسجيل الخروج</button>
+
 </section>
 
 <script>
+
 const SUPABASE_URL =
 "https://mtcnhlrvolyhdreuvlpg.supabase.co";
 
@@ -72,88 +152,97 @@ const SUPABASE_KEY =
 "sb_publishable_jey_P0EhKVoX5EdNLOjyMw_nB0Yl3eV";
 
 const db = window.supabase.createClient(
-SUPABASE_URL,
-SUPABASE_KEY
+  SUPABASE_URL,
+  SUPABASE_KEY
 );
 
 let currentProfile = null;
 let availableBranches = [];
 
 function message(text){
-document.getElementById("message").textContent=text;
+  document.getElementById("message").textContent = text;
 }
 
 async function login(){
-const email=document.getElementById("email").value.trim();
-const password=document.getElementById("password").value;
-const btn=document.getElementById("loginBtn");
 
-if(!email || !password){
-message("أدخل البريد الإلكتروني وكلمة المرور");
-return;
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const btn = document.getElementById("loginBtn");
+
+  if(!email || !password){
+    message("أدخل البريد الإلكتروني وكلمة المرور");
+    return;
+  }
+
+  btn.disabled = true;
+  message("جارٍ تسجيل الدخول...");
+
+  try{
+
+    const {data,error} = await db.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if(error) throw error;
+
+    await loadProfile(data.user);
+
+    message("");
+
+  }catch(error){
+
+    message("خطأ: " + error.message);
+
+  }finally{
+
+    btn.disabled = false;
+
+  }
 }
 
-btn.disabled=true;
-message("جارٍ تسجيل الدخول...");
+async function loadProfile(user){
 
-try{
-const {data,error}=await db.auth.signInWithPassword({
-email,password
-});
-
-if(error) throw error;
-
-await loadProfile(data.user);
-
-}catch(error){
-message("خطأ: "+error.message);
-}
-
-btn.disabled=false;
-}
-
-
-async function loadProfile(user) {
-
-  const { data: profile, error } = await db
+  const {data:profile,error:profileError} = await db
     .from("profiles")
     .select("id,full_name,role,active,is_super_admin,branch_id")
-    .eq("id", user.id)
+    .eq("id",user.id)
     .single();
 
-  if (error) throw error;
-  if (!profile) throw new Error("الحساب غير موجود");
-  if (profile.active !== true) {
+  if(profileError) throw profileError;
+
+  if(!profile){
+    throw new Error("الحساب غير موجود");
+  }
+
+  if(profile.active !== true){
     throw new Error("الحساب غير مفعّل");
   }
 
   currentProfile = profile;
 
-  const { data: assignments, error: assignmentError } = await db
+  const {data:assignments,error:assignmentError} = await db
     .from("user_branches")
     .select("branch_id")
-    .eq("user_id", user.id);
+    .eq("user_id",user.id);
 
-  if (assignmentError) throw assignmentError;
+  if(assignmentError) throw assignmentError;
 
-  const { data: branches, error: branchError } = await db
+  const {data:branches,error:branchError} = await db
     .from("branches")
     .select("id,name")
-    .eq("active", true);
+    .eq("active",true);
 
-  if (branchError) throw branchError;
-const { data: branchTest, error: branchTestError } = await db
-  .from("branches")
-  .select("id,name");
+  if(branchError) throw branchError;
 
-if (branchTestError) throw branchTestError;
+  // تحديد الفروع المسموحة للحساب
 
-document.getElementById("appMessage").textContent =
-  "الفروع الظاهرة للحساب: " +
-  (branchTest || []).map(b => b.name).join("، ");
-  if (profile.is_super_admin === true) {
+  if(profile.is_super_admin === true){
+
     availableBranches = branches || [];
-  } else {
+
+  }else{
+
     const allowedIds = new Set(
       (assignments || []).map(item => item.branch_id)
     );
@@ -161,11 +250,14 @@ document.getElementById("appMessage").textContent =
     availableBranches = (branches || []).filter(
       branch => allowedIds.has(branch.id)
     );
+
   }
 
-  if (availableBranches.length === 0) {
+  if(availableBranches.length === 0){
     throw new Error("لا يوجد فرع مسموح لهذا الحساب");
   }
+
+  // إظهار لوحة التحكم
 
   document.getElementById("login").classList.add("hidden");
   document.getElementById("dashboard").classList.remove("hidden");
@@ -173,68 +265,113 @@ document.getElementById("appMessage").textContent =
   document.getElementById("userName").textContent = profile.full_name;
   document.getElementById("userRole").textContent = profile.role;
 
+  // تجهيز قائمة الفروع
+
   const picker = document.getElementById("branchPicker");
   const select = document.getElementById("branchSelect");
 
   select.innerHTML = "";
 
   availableBranches.forEach(branch => {
+
     const option = document.createElement("option");
+
     option.value = branch.id;
     option.textContent = branch.name;
+
     select.appendChild(option);
+
   });
 
-  if (availableBranches.length === 1) {
+  if(availableBranches.length === 1){
+
     picker.classList.add("hidden");
-  } else {
+
+  }else{
+
     picker.classList.remove("hidden");
+
   }
 
   select.value = availableBranches[0].id;
 
-  function selectBranch() {
+  // اختيار الفرع
+
+  function selectBranch(){
+
     const branch = availableBranches.find(
       b => b.id === select.value
     );
 
-    if (!branch) {
+    if(!branch){
+
       document.getElementById("branchName").textContent =
         "لم يتم تحديد الفرع";
+
       return;
+
     }
 
-    document.getElementById("branchName").textContent = branch.name;
+    document.getElementById("branchName").textContent =
+      branch.name;
 
-    document.getElementById("appMessage").textContent =
-  "الفرع الحالي: " + branch.name +
-  " | الفروع التي تسمح قاعدة البيانات برؤيتها: " +
-  (branchTest || []).map(b => b.name).join("، ");
   }
 
   select.onchange = selectBranch;
+
   selectBranch();
+
+  // اختبار قراءة الفروع من قاعدة البيانات
+
+  const visibleBranchNames = (branches || [])
+    .map(branch => branch.name)
+    .join("، ");
+
+  document.getElementById("appMessage").textContent =
+    "الفروع التي تسمح قاعدة البيانات بقراءتها: " +
+    (visibleBranchNames || "لا يوجد");
+
 }
-async function logout() {
-  await db.auth.signOut();
+
+async function logout(){
+
+  const {error} = await db.auth.signOut();
+
+  if(error){
+    message("خطأ في تسجيل الخروج: " + error.message);
+    return;
+  }
 
   currentProfile = null;
   availableBranches = [];
 
   document.getElementById("dashboard").classList.add("hidden");
   document.getElementById("login").classList.remove("hidden");
+
   document.getElementById("password").value = "";
 
+  document.getElementById("branchName").textContent = "";
+  document.getElementById("appMessage").textContent = "";
+
   message("");
+
 }
 
-db.auth.onAuthStateChange((event, session) => {
-  if (event === "SIGNED_OUT") {
+db.auth.onAuthStateChange((event,session) => {
+
+  if(event === "SIGNED_OUT"){
+
+    currentProfile = null;
+    availableBranches = [];
+
     document.getElementById("dashboard").classList.add("hidden");
     document.getElementById("login").classList.remove("hidden");
+
   }
+
 });
 
 </script>
+
 </body>
 </html>
