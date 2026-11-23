@@ -138,7 +138,10 @@ const { data: myAssignments, error: myAssignmentsError } = await db
 if (myAssignmentsError) throw myAssignmentsError;
 
 document.getElementById("appMessage").textContent =
-  "الفروع المسموحة: " + (myAssignments || []).length;
+  "الفرع الحالي: " + branch.name +
+  " | عدد التعيينات: " + (myAssignments || []).length +
+  " | IDs: " +
+  (myAssignments || []).map(item => item.branch_id).join(", ");
 
 const { data: branches, error: branchError } = await db
   .from("branches")
