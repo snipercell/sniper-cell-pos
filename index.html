@@ -161,18 +161,46 @@ if (availableBranches.length === 0) {
 }
 
 document.getElementById("login").classList.add("hidden");
-document.getElementById("dashboard").classList.remove("hidden");
-
-document.getElementById("userName").textContent=profile.full_name;
-document.getElementById("userRole").textContent=profile.role;
-
-
+document.getElementById("dashboard").classList.remove("
 const picker = document.getElementById("branchPicker");
 const select = document.getElementById("branchSelect");
 
 select.innerHTML = "";
 
 availableBranches.forEach(branch => {
+  const option = document.createElement("option");
+  option.value = branch.id;
+  option.textContent = branch.name;
+  select.appendChild(option);
+});
+
+if (availableBranches.length === 1) {
+  select.value = availableBranches[0].id;
+  picker.classList.add("hidden");
+} else {
+  picker.classList.remove("hidden");
+  select.value = availableBranches[0].id;
+}
+
+function selectBranch() {
+  const selected = select.value;
+
+  const branch = availableBranches.find(
+    b => b.id === selected
+  );
+
+  if (!branch) {
+    document.getElementById("branchName").textContent = "لم يتم تحديد الفرع";
+    return;
+  }
+
+  document.getElementById("branchName").textContent = branch.name;
+  document.getElementById("appMessage").textContent = "تم اختيار الفرع بنجاح";
+}
+
+select.addEventListener("change", selectBranch);
+selectBranch();
+
   const option = document.createElement("option");
   option.value = branch.id;
   option.textContent = branch.name;
