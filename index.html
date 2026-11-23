@@ -209,7 +209,9 @@ function selectBranch() {
   }
 
   document.getElementById("branchName").textContent = branch.name;
-  document.getElementById("appMessage").textContent = "تم اختيار الفرع بنجاح";
+  document.getElementById("appMessage").textContent =
+  "تم اختيار الفرع بنجاح — الفروع المسموحة: " +
+  (myAssignments || []).length;
 }
 
 select.onchange = selectBranch;
