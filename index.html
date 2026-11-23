@@ -130,23 +130,34 @@ throw new Error("الحساب غير مفعّل");
 
 currentProfile=profile;
 
-const {data:branches,error:branchError}=await db
-.from("branches")
-.select("id,name")
-.eq("active",true);
+const { data: branches, error: branchError } = await db
+  .from("branches")
+  .select("id,name")
+  .eq("active", true);
 
-if(branchError) throw branchError;
+if (branchError) throw branchError;
 
-if(profile.is_super_admin === true){
-availableBranches=branches || [];
-}else{
-availableBranches=(branches || []).filter(
-b=>b.id === profile.branch_id
-);
+if (profile.is_super_admin === true) {
+  availableBranches = branches || [];
+} else {
+  const { data: assignments, error: assignmentError } = await db
+    .from("user_branches")
+    .select("branch_id")
+    .eq("user_id", user.id);
+
+  if (assignmentError) throw assignmentError;
+
+  const allowedIds = new Set(
+    (assignments || []).map(item => item.branch_id)
+  );
+
+  availableBranches = (branches || []).filter(
+    branch => allowedIds.has(branch.id)
+  );
 }
 
-if(availableBranches.length===0){
-throw new Error("لا يوجد فرع مسموح لهذا الحساب");
+if (availableBranches.length === 0) {
+  throw new Error("لا يوجد فرع مسموح لهذا الحساب");
 }
 
 document.getElementById("login").classList.add("hidden");
