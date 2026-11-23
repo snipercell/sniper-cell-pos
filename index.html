@@ -142,7 +142,15 @@ async function loadProfile(user) {
     .eq("active", true);
 
   if (branchError) throw branchError;
+const { data: branchTest, error: branchTestError } = await db
+  .from("branches")
+  .select("id,name");
 
+if (branchTestError) throw branchTestError;
+
+document.getElementById("appMessage").textContent =
+  "الفروع الظاهرة للحساب: " +
+  (branchTest || []).map(b => b.name).join("، ");
   if (profile.is_super_admin === true) {
     availableBranches = branches || [];
   } else {
@@ -199,11 +207,9 @@ async function loadProfile(user) {
     document.getElementById("branchName").textContent = branch.name;
 
     document.getElementById("appMessage").textContent =
-      "الفرع: " + branch.name +
-      " | عدد الفروع المسموحة: " +
-      (profile.is_super_admin === true
-        ? availableBranches.length
-        : assignments.length);
+  "الفرع الحالي: " + branch.name +
+  " | الفروع التي تسمح قاعدة البيانات برؤيتها: " +
+  (branchTest || []).map(b => b.name).join("، ");
   }
 
   select.onchange = selectBranch;
