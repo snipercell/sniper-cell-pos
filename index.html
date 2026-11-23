@@ -112,48 +112,23 @@ message("خطأ: "+error.message);
 btn.disabled=false;
 }
 
-async function loadProfile(user){
 
-const {data:profile,error}=await db
-.from("profiles")
-.select("id,full_name,role,active,is_super_admin,branch_id")
-.eq("id",user.id)
-.single();
+async function loadProfile(user) {
 
-if(error) throw error;
+  const { data: profile, error } = await db
+    .from("profiles")
+    .select("id,full_name,role,active,is_super_admin,branch_id")
+    .eq("id", user.id)
+    .single();
 
-if(!profile) throw new Error("الحساب غير موجود");
+  if (error) throw error;
+  if (!profile) throw new Error("الحساب غير موجود");
+  if (profile.active !== true) {
+    throw new Error("الحساب غير مفعّل");
+  }
 
-if(profile.active !== true){
-throw new Error("الحساب غير مفعّل");
-}
+  currentProfile = profile;
 
-currentProfile=profile;
-
-const { data: myAssignments, error: myAssignmentsError } = await db
-  .from("user_branches")
-  .select("branch_id")
-  .eq("user_id", user.id);
-
-if (myAssignmentsError) throw myAssignmentsError;
-
-document.getElementById("appMessage").textContent =
-  "الفرع الحالي: " + branch.name +
-  " | عدد التعيينات: " + (myAssignments || []).length +
-  " | IDs: " +
-  (myAssignments || []).map(item => item.branch_id).join(", ");
-
-document.getElementById("appMessage").textContent =
-  "الفرع الحالي: "
-  .from("branches")
-  .select("id,name")
-  .eq("active", true);
-
-if (branchError) throw branchError;
-
-if (profile.is_super_admin === true) {
-  availableBranches = branches || [];
-} else {
   const { data: assignments, error: assignmentError } = await db
     .from("user_branches")
     .select("branch_id")
@@ -161,72 +136,80 @@ if (profile.is_super_admin === true) {
 
   if (assignmentError) throw assignmentError;
 
-  const allowedIds = new Set(
-    (assignments || []).map(item => item.branch_id)
-  );
+  const { data: branches, error: branchError } = await db
+    .from("branches")
+    .select("id,name")
+    .eq("active", true);
 
-  availableBranches = (branches || []).filter(
-    branch => allowedIds.has(branch.id)
-  );
-}
+  if (branchError) throw branchError;
 
-if (availableBranches.length === 0) {
-  throw new Error("لا يوجد فرع مسموح لهذا الحساب");
-}
+  if (profile.is_super_admin === true) {
+    availableBranches = branches || [];
+  } else {
+    const allowedIds = new Set(
+      (assignments || []).map(item => item.branch_id)
+    );
 
-
-document.getElementById("login").classList.add("hidden");
-document.getElementById("dashboard").classList.remove("hidden");
-
-document.getElementById("userName").textContent = profile.full_name;
-document.getElementById("userRole").textContent = profile.role;
-
-const picker = document.getElementById("branchPicker");
-const select = document.getElementById("branchSelect");
-
-select.innerHTML = "";
-
-availableBranches.forEach(branch => {
-  const option = document.createElement("option");
-  option.value = branch.id;
-  option.textContent = branch.name;
-  select.appendChild(option);
-});
-
-
-if (availableBranches.length === 1) {
-  picker.classList.add("hidden");
-} else {
-  picker.classList.remove("hidden");
-}
-
-select.value = availableBranches[0].id;
-
-function selectBranch() {
-  const branch = availableBranches.find(
-    b => b.id === select.value
-  );
-
-  if (!branch) {
-    document.getElementById("branchName").textContent = "لم يتم تحديد الفرع";
-    return;
+    availableBranches = (branches || []).filter(
+      branch => allowedIds.has(branch.id)
+    );
   }
 
-  document.getElementById("branchName").textContent = branch.name;
-  document.getElementById("appMessage").textContent =
-  "الفرع: " + branch.name +
-  " | عدد الفروع المسموحة: " +
-  (profile.is_super_admin === true
-    ? availableBranches.length
-    : assignments.length);
+  if (availableBranches.length === 0) {
+    throw new Error("لا يوجد فرع مسموح لهذا الحساب");
+  }
+
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+
+  document.getElementById("userName").textContent = profile.full_name;
+  document.getElementById("userRole").textContent = profile.role;
+
+  const picker = document.getElementById("branchPicker");
+  const select = document.getElementById("branchSelect");
+
+  select.innerHTML = "";
+
+  availableBranches.forEach(branch => {
+    const option = document.createElement("option");
+    option.value = branch.id;
+    option.textContent = branch.name;
+    select.appendChild(option);
+  });
+
+  if (availableBranches.length === 1) {
+    picker.classList.add("hidden");
+  } else {
+    picker.classList.remove("hidden");
+  }
+
+  select.value = availableBranches[0].id;
+
+  function selectBranch() {
+    const branch = availableBranches.find(
+      b => b.id === select.value
+    );
+
+    if (!branch) {
+      document.getElementById("branchName").textContent =
+        "لم يتم تحديد الفرع";
+      return;
+    }
+
+    document.getElementById("branchName").textContent = branch.name;
+
+    document.getElementById("appMessage").textContent =
+      "الفرع: " + branch.name +
+      " | عدد الفروع المسموحة: " +
+      (profile.is_super_admin === true
+        ? availableBranches.length
+        : assignments.length);
+  }
+
+  select.onchange = selectBranch;
+  selectBranch();
 }
 
-select.onchange = selectBranch;
-selectBranch();
-
-}
-
-async function logout() {
   await db.auth.signOut();
 
   currentProfile = null;
