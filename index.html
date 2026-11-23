@@ -209,7 +209,7 @@ async function loadProfile(user) {
   select.onchange = selectBranch;
   selectBranch();
 }
-
+async function logout() {
   await db.auth.signOut();
 
   currentProfile = null;
