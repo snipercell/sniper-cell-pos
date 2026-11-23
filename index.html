@@ -160,8 +160,13 @@ if (availableBranches.length === 0) {
   throw new Error("لا يوجد فرع مسموح لهذا الحساب");
 }
 
+
 document.getElementById("login").classList.add("hidden");
-document.getElementById("dashboard").classList.remove("
+document.getElementById("dashboard").classList.remove("hidden");
+
+document.getElementById("userName").textContent = profile.full_name;
+document.getElementById("userRole").textContent = profile.role;
+
 const picker = document.getElementById("branchPicker");
 const select = document.getElementById("branchSelect");
 
@@ -174,19 +179,18 @@ availableBranches.forEach(branch => {
   select.appendChild(option);
 });
 
+
 if (availableBranches.length === 1) {
-  select.value = availableBranches[0].id;
   picker.classList.add("hidden");
 } else {
   picker.classList.remove("hidden");
-  select.value = availableBranches[0].id;
 }
 
-function selectBranch() {
-  const selected = select.value;
+select.value = availableBranches[0].id;
 
+function selectBranch() {
   const branch = availableBranches.find(
-    b => b.id === selected
+    b => b.id === select.value
   );
 
   if (!branch) {
@@ -198,35 +202,31 @@ function selectBranch() {
   document.getElementById("appMessage").textContent = "تم اختيار الفرع بنجاح";
 }
 
-select.addEventListener("change", selectBranch);
+select.onchange = selectBranch;
 selectBranch();
 
-  const option = document.createElement("option");
-  option.value = branch.id;
-  option.textContent = branch.name;
-  select.appendChild(option);
+}
+
+async function logout() {
+  await db.auth.signOut();
+
+  currentProfile = null;
+  availableBranches = [];
+
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("password").value = "";
+
+  message("");
+}
+
+db.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_OUT") {
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("login").classList.remove("hidden");
+  }
 });
 
-if (profile.is_super_admin === true) {
-  picker.classList.remove("hidden");
-} else {
-  picker.classList.add("hidden");
-  select.value = availableBranches[0].id;
-}
-
-selectBranch();
-
-function selectBranch() {
-  const selected = document.getElementById("branchSelect").value;
-
-  const branch = availableBranches.find(
-    b => b.id === selected
-  );
-
-  if (!branch) return;
-
-  document.getElementById("branchName").textContent = branch.name;
-
-  document.getElementById("appMessage").textContent =
-    "تم اختيار الفرع بنجاح";
-}
+</script>
+</body>
+</html>
