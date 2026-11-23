@@ -143,7 +143,8 @@ document.getElementById("appMessage").textContent =
   " | IDs: " +
   (myAssignments || []).map(item => item.branch_id).join(", ");
 
-const { data: branches, error: branchError } = await db
+document.getElementById("appMessage").textContent =
+  "الفرع الحالي: "
   .from("branches")
   .select("id,name")
   .eq("active", true);
