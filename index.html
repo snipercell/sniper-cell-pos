@@ -144,11 +144,11 @@ async function loadUser(user) {
   allowedBranches = profile.is_super_admin
     ? (branches || [])
     : (branches || []).filter(b => assignedIds.has(b.id));
-  if (!allowedBranches.length) throw new Error("لا يوجد فرع مفعّل ومسموح لهذا الحساب. راجع مالك النظام.");
+  if (!allowedBranches.length) throw new Error("لا يوجد فرع مفعّل ومسموح لهذا الحساب. راجع الإدارة.");
 
   currentProfile = profile;
   $("userName").textContent = profile.full_name || user.email || "مستخدم";
-  $("userRole").textContent = profile.is_super_admin ? "مالك النظام" : (profile.role || "موظف");
+  $("userRole").textContent = profile.is_super_admin ? "مدير كامل الصلاحيات" : (profile.role || "موظف");
   $("branchSelect").replaceChildren(...allowedBranches.map(b => {
     const option = document.createElement("option");
     option.value = b.id; option.textContent = b.name; return option;
