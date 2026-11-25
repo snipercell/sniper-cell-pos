@@ -59,12 +59,23 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #4b9cff
     <h1 class="heading">تسجيل الدخول</h1>
     <p class="muted">سجّل الدخول بحسابك المصرّح به للمتابعة.</p>
     <form id="loginForm">
-      <label for="email">البريد الإلكتروني</label>
-      <input id="email" type="email" autocomplete="username" required>
+      <label for="username">اسم المستخدم</label>
+      <input id="username" type="text" autocomplete="username" required minlength="3" maxlength="40">
       <label for="password">كلمة المرور</label>
       <input id="password" type="password" autocomplete="current-password" required>
       <button id="loginBtn" class="primary" type="submit">دخول</button>
       <div id="loginMessage" class="message" role="status"></div>
+    </form>
+    <button id="showRequestBtn" class="logout" style="width:100%;margin-top:10px">طلب إنشاء حساب جديد</button>
+    <form id="requestForm" class="hidden">
+      <h2 style="font-size:18px;margin-top:24px">طلب حساب جديد</h2>
+      <p class="muted" style="font-size:13px;line-height:1.7">سيبقى الطلب معلّقاً إلى أن تتم مراجعته والموافقة عليه من الإدارة.</p>
+      <label for="requestName">الاسم الكامل</label><input id="requestName" required maxlength="100" autocomplete="name">
+      <label for="requestUsername">اسم المستخدم المطلوب</label><input id="requestUsername" required minlength="3" maxlength="40" autocomplete="username">
+      <label for="requestEmail">إيميل للتواصل وإعداد كلمة المرور</label><input id="requestEmail" type="email" required autocomplete="email">
+      <button id="requestBtn" class="primary" type="submit">إرسال طلب الحساب</button>
+      <div id="requestMessage" class="message" role="status"></div>
+      <button id="backToLoginBtn" class="logout" type="button" style="width:100%;margin-top:8px">العودة لتسجيل الدخول</button>
     </form>
   </div>
 </section>
@@ -149,19 +160,52 @@ $("loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   const button = $("loginBtn");
   button.disabled = true;
-  $("loginMessage").textContent = "جارٍ التحقق من الحساب...";
+  $("loginMessage").textContent = "جارٍ التحقق من اسم المستخدم وكلمة المرور...";
   try {
-    const {data, error} = await db.auth.signInWithPassword({
-      email: $("email").value.trim(),
-      password: $("password").value
+    const response = await fetch("/.netlify/functions/username-login", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({username:$("username").value.trim(),password:$("password").value})
     });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "تعذّر تسجيل الدخول.");
+    if (!result.access_token || !result.refresh_token) throw new Error("استجابة تسجيل الدخول غير مكتملة.");
+    const {error} = await db.auth.setSession({access_token:result.access_token,refresh_token:result.refresh_token});
     if (error) throw error;
-    await loadUser(data.user);
+    const {data:{user}} = await db.auth.getUser();
+    await loadUser(user);
   } catch (error) {
-    $("loginMessage").textContent = "تعذّر تسجيل الدخول: " + error.message;
-  } finally {
-    button.disabled = false;
-  }
+    $("loginMessage").textContent = error.message || "تعذّر تسجيل الدخول.";
+  } finally { button.disabled = false; }
+});
+$("showRequestBtn").addEventListener("click", () => {
+  $("loginForm").classList.add("hidden");
+  $("showRequestBtn").classList.add("hidden");
+  $("requestForm").classList.remove("hidden");
+  $("loginMessage").textContent = "";
+});
+$("backToLoginBtn").addEventListener("click", () => {
+  $("requestForm").classList.add("hidden");
+  $("loginForm").classList.remove("hidden");
+  $("showRequestBtn").classList.remove("hidden");
+});
+$("requestForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = $("requestBtn"); button.disabled = true;
+  $("requestMessage").textContent = "جارٍ إرسال الطلب...";
+  try {
+    const response = await fetch("/.netlify/functions/request-account", {
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({full_name:$("requestName").value.trim(),username:$("requestUsername").value.trim(),email:$("requestEmail").value.trim()})
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "تعذّر إرسال الطلب.");
+    $("requestMessage").style.color = "#32c48d";
+    $("requestMessage").textContent = "تم إرسال طلبك للمراجعة. لن يتم تفعيل الحساب قبل الموافقة.";
+    $("requestForm").reset();
+  } catch(error) {
+    $("requestMessage").style.color = "#ffb6a9";
+    $("requestMessage").textContent = error.message || "خدمة طلب الحساب غير مهيأة بعد.";
+  } finally { button.disabled = false; }
 });
 $("logoutBtn").addEventListener("click", async () => {
   const {error} = await db.auth.signOut();
