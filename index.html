@@ -110,8 +110,8 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #4b9cff
   </main>
 </div>
 <script>
-const SUPABASE_URL = "https://mtcnhlrvolyhdreuvlpg.supabase.co";
-const SUPABASE_KEY = "sb_publishable_jey_P0EhKVoX5EdNLOjyMw_nB0Yl3eV";
+const SUPABASE_URL = "https://opbzfgmzpngstgdoihrc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_LeuENOe_jPZ7Cli5W3Nuvw_4b1zzflB";
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentProfile = null;
 let allowedBranches = [];
@@ -162,8 +162,8 @@ $("loginForm").addEventListener("submit", async (event) => {
   button.disabled = true;
   $("loginMessage").textContent = "جارٍ التحقق من اسم المستخدم وكلمة المرور...";
   try {
-    const response = await fetch("/.netlify/functions/username-login", {
-      method: "POST", headers: {"Content-Type":"application/json"},
+    const response = await fetch(SUPABASE_URL + "/functions/v1/username-login", {
+      method: "POST", headers: {"Content-Type":"application/json", "apikey":SUPABASE_KEY},
       body: JSON.stringify({username:$("username").value.trim(),password:$("password").value})
     });
     const result = await response.json();
@@ -193,14 +193,14 @@ $("requestForm").addEventListener("submit", async (event) => {
   const button = $("requestBtn"); button.disabled = true;
   $("requestMessage").textContent = "جارٍ إرسال الطلب...";
   try {
-    const response = await fetch("/.netlify/functions/request-account", {
-      method:"POST",headers:{"Content-Type":"application/json"},
+    const response = await fetch(SUPABASE_URL + "/functions/v1/request-account", {
+      method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
       body:JSON.stringify({full_name:$("requestName").value.trim(),username:$("requestUsername").value.trim(),email:$("requestEmail").value.trim()})
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "تعذّر إرسال الطلب.");
-    $("requestMessage").style.color = "#32c48d";
-    $("requestMessage").textContent = "تم إرسال طلبك للمراجعة. لن يتم تفعيل الحساب قبل الموافقة.";
+    $("requestMessage").style.color = result.notification_sent === false ? "#ffcf7a" : "#32c48d";
+    $("requestMessage").textContent = result.message || "تم حفظ طلبك للمراجعة. لن يتم تفعيل الحساب قبل الموافقة.";
     $("requestForm").reset();
   } catch(error) {
     $("requestMessage").style.color = "#ffb6a9";
