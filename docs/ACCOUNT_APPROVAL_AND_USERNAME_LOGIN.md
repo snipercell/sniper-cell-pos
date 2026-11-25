@@ -69,3 +69,18 @@ This design is not live until all of the following are configured and verified:
 - An SMTP/email provider and verified sender.
 - Database schema, unique constraints, RLS policies, and audit logging.
 - A configured administrator inbox and at least one secure initial approver/bootstrap path.
+
+
+## Deployment progress (2026-11-25)
+
+- A separate Supabase project was created for Testing: `opbzfgmzpngstgdoihrc`.
+- Core tables deployed: `profiles`, `branches`, `user_branches`, `user_permissions`, `account_requests`, `audit_log`, and server-only settings/rate-limit tables.
+- RLS is enabled on all created tables. Account requests and audit logs have no client-facing policies; only server-side service access can read/write them.
+- Edge Functions deployed: `username-login`, `request-account`, and `approve-account`.
+- The Testing frontend now points to the new project. The legacy Supabase project and production branch remain untouched.
+- Email delivery is intentionally fail-closed until secrets are configured in Supabase Edge Function secrets:
+  - `RESEND_API_KEY`
+  - `EMAIL_FROM` (a verified sender address/domain in Resend)
+  - Configure the Supabase Auth Site URL / redirect allow-list to the Testing app URL so password-setup links return to the app.
+- Resend currently advertises a free tier of $0/month with 3,000 transactional emails/month and a 100/day cap; confirm limits on its pricing page before use.
+- No initial admin account is hardcoded or created. A bootstrap/admin assignment workflow is still required before the first approved account can manage users, branches, or permissions. Approved accounts currently start active with no branch and no admin permission.
