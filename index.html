@@ -1,377 +1,84 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SNIPER CELL POS</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>نظام إدارة المبيعات</title>
 <style>
-*{box-sizing:border-box}
-
-body{
-  margin:0;
-  background:#101827;
-  color:white;
-  font-family:Arial,sans-serif;
-  padding:20px;
-}
-
-header{
-  text-align:center;
-  padding:20px;
-}
-
-h1{color:#55aaff}
-
-.card{
-  background:#1d293b;
-  padding:22px;
-  border-radius:14px;
-  margin:18px auto;
-  max-width:500px;
-}
-
-input,select,button{
-  width:100%;
-  padding:14px;
-  margin:9px 0;
-  border-radius:8px;
-  border:0;
-  font-size:16px;
-}
-
-button{
-  background:#2878df;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-}
-
-button:disabled{opacity:.5}
-
-.hidden{display:none}
-
-.info{
-  background:#263b54;
-  padding:15px;
-  border-radius:10px;
-  margin:12px 0;
-  line-height:2;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-
-.tile{
-  background:#263b54;
-  padding:20px 8px;
-  border-radius:10px;
-  text-align:center;
-}
-
-#message{
-  color:#ffb3a7;
-  white-space:pre-wrap;
-  line-height:1.6;
-}
-
-#appMessage{
-  background:#263b54;
-  padding:12px;
-  margin-top:15px;
-  border-radius:8px;
-  line-height:1.8;
-  overflow-wrap:anywhere;
-}
+:root{color-scheme:dark;--bg:#0b1220;--panel:#131f32;--panel2:#1b2b43;--line:#293b55;--text:#eef4ff;--muted:#9aabc2;--accent:#68a7ff;--good:#55c7a0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;min-height:100vh}
+button{font:inherit;cursor:pointer}.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}
+.sidebar{background:#0f1a2b;border-left:1px solid var(--line);padding:22px 14px;display:flex;flex-direction:column;gap:20px}
+.brand{padding:8px 10px 18px;border-bottom:1px solid var(--line)}.brand-mark{width:42px;height:42px;border-radius:13px;background:var(--panel2);display:grid;place-items:center;font-size:21px;margin-bottom:12px}.brand h1{font-size:17px;margin:0 0 6px}.brand p{font-size:12px;color:var(--muted);margin:0}
+.nav{display:grid;gap:6px}.nav button{border:0;background:transparent;color:#c3d0e2;text-align:right;padding:12px;border-radius:10px;display:flex;gap:11px;align-items:center}.nav button:hover,.nav button.active{background:#203653;color:#fff}.nav .ico{width:22px;text-align:center}
+.sidebar-foot{margin-top:auto;color:var(--muted);font-size:11px;line-height:1.8;padding:10px}
+main{min-width:0;padding:26px clamp(16px,3vw,38px) 40px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:24px}.eyebrow{color:var(--muted);font-size:12px;margin-bottom:6px}.topbar h2{font-size:23px;margin:0}.top-actions{display:flex;align-items:center;gap:10px}.branch{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:10px 13px;border-radius:10px}.avatar{width:38px;height:38px;border-radius:50%;background:var(--panel2);display:grid;place-items:center}
+.notice{border:1px solid #765b2b;background:#342a19;color:#f6d79b;padding:13px 15px;border-radius:12px;font-size:13px;line-height:1.8;margin-bottom:22px}
+.welcome{margin:0 0 5px;font-size:19px}.sub{color:var(--muted);font-size:13px;margin:0 0 22px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:22px}.stat,.panel,.module-card{background:var(--panel);border:1px solid var(--line);border-radius:15px}.stat{padding:17px}.stat-label{font-size:12px;color:var(--muted)}.stat-value{font-size:24px;font-weight:700;margin-top:12px}.stat-foot{font-size:11px;color:var(--muted);margin-top:5px}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:28px 0 13px}.section-head h3{font-size:16px;margin:0}.section-head span{font-size:11px;color:var(--muted)}
+.modules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.module-card{padding:18px;text-align:right;color:var(--text);min-height:112px;transition:.15s}.module-card:hover{border-color:#527fb7;transform:translateY(-1px)}.module-icon{font-size:22px;margin-bottom:12px}.module-title{font-size:14px;font-weight:700}.module-desc{font-size:11px;color:var(--muted);margin-top:6px}
+.empty{padding:28px;text-align:center;color:var(--muted);background:var(--panel);border:1px dashed #344966;border-radius:14px;font-size:13px;line-height:1.9}
+.page-view{display:none}.page-view.active{display:block}.dashboard-view.active{display:block}
+.mobile-head{display:none}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.modules{grid-template-columns:repeat(2,minmax(0,1fr))}.app{grid-template-columns:210px minmax(0,1fr)}}
+@media(max-width:650px){.app{display:block;padding-bottom:72px}.sidebar{position:fixed;z-index:5;bottom:0;top:auto;left:0;right:0;height:66px;padding:5px 7px calc(5px + env(safe-area-inset-bottom));border-left:0;border-top:1px solid var(--line);display:block}.brand,.sidebar-foot{display:none}.nav{display:flex;justify-content:space-around;gap:2px;height:100%}.nav button{flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:4px 1px;font-size:10px;text-align:center}.nav .ico{font-size:17px}.nav button span:last-child{white-space:nowrap}.nav button:nth-child(n+6){display:none}main{padding:20px 14px 24px}.topbar h2{font-size:19px}.top-actions{gap:6px}.branch{max-width:130px;font-size:11px;padding:9px}.avatar{display:none}.stats{gap:9px}.stat{padding:13px}.stat-value{font-size:20px}.modules{gap:9px}.module-card{padding:14px;min-height:105px}.notice{font-size:12px}}
 </style>
 </head>
-
 <body>
-
-<header>
-  <h1>SNIPER CELL</h1>
-  <p>POINT OF SALE & MANAGEMENT</p>
-</header>
-
-<section class="card" id="login">
-  <h2>تسجيل الدخول</h2>
-
-  <input id="email" type="email" placeholder="البريد الإلكتروني">
-
-  <input id="password" type="password" placeholder="كلمة المرور">
-
-  <button id="loginBtn" onclick="login()">دخول</button>
-
-  <div id="message"></div>
-</section>
-
-<section class="card hidden" id="dashboard">
-
-  <h2 id="welcome">أهلاً بك</h2>
-
-  <div class="info">
-    <div>الاسم: <b id="userName"></b></div>
-    <div>الصلاحية: <b id="userRole"></b></div>
-    <div>الفرع: <b id="branchName"></b></div>
-  </div>
-
-  <div id="branchPicker" class="hidden">
-    <label>اختيار الفرع</label>
-    <select id="branchSelect"></select>
-  </div>
-
-  <h3>القائمة الرئيسية</h3>
-
-  <div class="grid">
-    <div class="tile">🛒<br>المبيعات</div>
-    <div class="tile">📦<br>المشتريات</div>
-    <div class="tile">🏷️<br>المخزون</div>
-    <div class="tile">🔧<br>الصيانة</div>
-    <div class="tile">💵<br>الصندوق</div>
-    <div class="tile">📊<br>التقارير</div>
-  </div>
-
-  <div id="appMessage"></div>
-
-  <button onclick="logout()">تسجيل الخروج</button>
-
-</section>
-
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">▦</div><h1 id="brandName">اسم البرنامج</h1><p>نظام إدارة الفروع والمبيعات</p></div>
+  <nav class="nav" aria-label="القائمة الرئيسية">
+    <button class="active" data-page="dashboard"><span class="ico">⌂</span><span>الرئيسية</span></button>
+    <button data-page="sales"><span class="ico">🛒</span><span>المبيعات</span></button>
+    <button data-page="inventory"><span class="ico">▤</span><span>المخزون</span></button>
+    <button data-page="purchases"><span class="ico">📥</span><span>المشتريات</span></button>
+    <button data-page="repairs"><span class="ico">🔧</span><span>الصيانة</span></button>
+    <button data-page="cash"><span class="ico">💵</span><span>الصندوق</span></button>
+    <button data-page="reports"><span class="ico">▥</span><span>التقارير</span></button>
+    <button data-page="settings"><span class="ico">⚙</span><span>الإعدادات</span></button>
+  </nav>
+  <div class="sidebar-foot">نسخة الاختبار<br>لا توجد بيانات تشغيلية متصلة بعد</div>
+</aside>
+<main>
+  <header class="topbar"><div><div class="eyebrow">مساحة العمل</div><h2 id="pageTitle">الرئيسية</h2></div><div class="top-actions"><select class="branch" aria-label="الفرع"><option>الفرع سيظهر بعد إعداد المالك</option></select><div class="avatar">؟</div></div></header>
+  <section class="page-view dashboard-view active" id="page-dashboard">
+    <div class="notice">هذه واجهة تأسيسية على فرع الاختبار فقط. تسجيل الدخول والبيانات والصلاحيات غير موصولة بعد؛ لذلك لن نعرض أرقاماً تجريبية على أنها بيانات حقيقية.</div>
+    <h3 class="welcome">أهلاً بك</h3><p class="sub">ستظهر هنا ملخصات العمل بعد إعداد المالك وربط قاعدة البيانات الآمنة.</p>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">مبيعات اليوم</div><div class="stat-value">—</div><div class="stat-foot">بانتظار ربط البيانات</div></div>
+      <div class="stat"><div class="stat-label">مشتريات اليوم</div><div class="stat-value">—</div><div class="stat-foot">بانتظار ربط البيانات</div></div>
+      <div class="stat"><div class="stat-label">قيمة المخزون</div><div class="stat-value">—</div><div class="stat-foot">بانتظار ربط البيانات</div></div>
+      <div class="stat"><div class="stat-label">صافي الربح</div><div class="stat-value">—</div><div class="stat-foot">بانتظار ربط البيانات</div></div>
+    </div>
+    <div class="section-head"><h3>أقسام النظام</h3><span>اختر القسم للمتابعة</span></div>
+    <div class="modules">
+      <button class="module-card" data-page="sales"><div class="module-icon">🛒</div><div class="module-title">المبيعات</div><div class="module-desc">فواتير، مرتجعات وطرق دفع</div></button>
+      <button class="module-card" data-page="inventory"><div class="module-icon">📦</div><div class="module-title">المخزون</div><div class="module-desc">أصناف، باركود وأرقام IMEI</div></button>
+      <button class="module-card" data-page="purchases"><div class="module-icon">📥</div><div class="module-title">المشتريات</div><div class="module-desc">موردون وفواتير توريد</div></button>
+      <button class="module-card" data-page="repairs"><div class="module-icon">🔧</div><div class="module-title">الصيانة</div><div class="module-desc">طلبات الصيانة ومتابعتها</div></button>
+      <button class="module-card" data-page="cash"><div class="module-icon">💵</div><div class="module-title">الصندوق والمصاريف</div><div class="module-desc">حركة النقد لكل فرع</div></button>
+      <button class="module-card" data-page="reports"><div class="module-icon">📊</div><div class="module-title">التقارير</div><div class="module-desc">المبيعات والأرباح وحركة المخزون</div></button>
+      <button class="module-card" data-page="topups"><div class="module-icon">📲</div><div class="module-title">التعبئة</div><div class="module-desc">Alfa وTouch والعمولات</div></button>
+      <button class="module-card" data-page="settings"><div class="module-icon">⚙️</div><div class="module-title">إدارة النظام</div><div class="module-desc">إعدادات المالك والفروع والمستخدمين</div></button>
+    </div>
+  </section>
+  <section class="page-view" id="page-placeholder"><div class="empty"><div style="font-size:26px;margin-bottom:10px">🧱</div><strong id="placeholderTitle">القسم قيد التجهيز</strong><br>سيتم بناء هذا القسم وربطه بصلاحيات قاعدة البيانات قبل تفعيل أي حفظ أو تعديل.</div></section>
+</main>
+</div>
 <script>
-
-const SUPABASE_URL =
-"https://mtcnhlrvolyhdreuvlpg.supabase.co";
-
-const SUPABASE_KEY =
-"sb_publishable_jey_P0EhKVoX5EdNLOjyMw_nB0Yl3eV";
-
-const db = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
-
-let currentProfile = null;
-let availableBranches = [];
-
-function message(text){
-  document.getElementById("message").textContent = text;
+const titles={dashboard:"الرئيسية",sales:"المبيعات",inventory:"المخزون",purchases:"المشتريات",repairs:"الصيانة",cash:"الصندوق والمصاريف",reports:"التقارير",settings:"إدارة النظام",topups:"التعبئة"};
+function openPage(page){
+  const title=titles[page]||"القسم";
+  document.getElementById("pageTitle").textContent=title;
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+  document.getElementById("page-dashboard").classList.toggle("active",page==="dashboard");
+  document.getElementById("page-placeholder").classList.toggle("active",page!=="dashboard");
+  document.getElementById("placeholderTitle").textContent=title+" — قيد التجهيز";
 }
-
-async function login(){
-
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-  const btn = document.getElementById("loginBtn");
-
-  if(!email || !password){
-    message("أدخل البريد الإلكتروني وكلمة المرور");
-    return;
-  }
-
-  btn.disabled = true;
-  message("جارٍ تسجيل الدخول...");
-
-  try{
-
-    const {data,error} = await db.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if(error) throw error;
-
-    await loadProfile(data.user);
-
-    message("");
-
-  }catch(error){
-
-    message("خطأ: " + error.message);
-
-  }finally{
-
-    btn.disabled = false;
-
-  }
-}
-
-async function loadProfile(user){
-
-  const {data:profile,error:profileError} = await db
-    .from("profiles")
-    .select("id,full_name,role,active,is_super_admin,branch_id")
-    .eq("id",user.id)
-    .single();
-
-  if(profileError) throw profileError;
-
-  if(!profile){
-    throw new Error("الحساب غير موجود");
-  }
-
-  if(profile.active !== true){
-    throw new Error("الحساب غير مفعّل");
-  }
-
-  currentProfile = profile;
-
-  const {data:assignments,error:assignmentError} = await db
-    .from("user_branches")
-    .select("branch_id")
-    .eq("user_id",user.id);
-
-  if(assignmentError) throw assignmentError;
-
-  const {data:branches,error:branchError} = await db
-    .from("branches")
-    .select("id,name")
-    .eq("active",true);
-
-  if(branchError) throw branchError;
-
-  // تحديد الفروع المسموحة للحساب
-
-  if(profile.is_super_admin === true){
-
-    availableBranches = branches || [];
-
-  }else{
-
-    const allowedIds = new Set(
-      (assignments || []).map(item => item.branch_id)
-    );
-
-    availableBranches = (branches || []).filter(
-      branch => allowedIds.has(branch.id)
-    );
-
-  }
-
-  if(availableBranches.length === 0){
-    throw new Error("لا يوجد فرع مسموح لهذا الحساب");
-  }
-
-  // إظهار لوحة التحكم
-
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("dashboard").classList.remove("hidden");
-
-  document.getElementById("userName").textContent = profile.full_name;
-  document.getElementById("userRole").textContent = profile.role;
-
-  // تجهيز قائمة الفروع
-
-  const picker = document.getElementById("branchPicker");
-  const select = document.getElementById("branchSelect");
-
-  select.innerHTML = "";
-
-  availableBranches.forEach(branch => {
-
-    const option = document.createElement("option");
-
-    option.value = branch.id;
-    option.textContent = branch.name;
-
-    select.appendChild(option);
-
-  });
-
-  if(availableBranches.length === 1){
-
-    picker.classList.add("hidden");
-
-  }else{
-
-    picker.classList.remove("hidden");
-
-  }
-
-  select.value = availableBranches[0].id;
-
-  // اختيار الفرع
-
-  function selectBranch(){
-
-    const branch = availableBranches.find(
-      b => b.id === select.value
-    );
-
-    if(!branch){
-
-      document.getElementById("branchName").textContent =
-        "لم يتم تحديد الفرع";
-
-      return;
-
-    }
-
-    document.getElementById("branchName").textContent =
-      branch.name;
-
-  }
-
-  select.onchange = selectBranch;
-
-  selectBranch();
-
-  // اختبار قراءة الفروع من قاعدة البيانات
-
-  const visibleBranchNames = (branches || [])
-    .map(branch => branch.name)
-    .join("، ");
-
-  document.getElementById("appMessage").textContent =
-    "الفروع التي تسمح قاعدة البيانات بقراءتها: " +
-    (visibleBranchNames || "لا يوجد");
-
-}
-
-async function logout(){
-
-  const {error} = await db.auth.signOut();
-
-  if(error){
-    message("خطأ في تسجيل الخروج: " + error.message);
-    return;
-  }
-
-  currentProfile = null;
-  availableBranches = [];
-
-  document.getElementById("dashboard").classList.add("hidden");
-  document.getElementById("login").classList.remove("hidden");
-
-  document.getElementById("password").value = "";
-
-  document.getElementById("branchName").textContent = "";
-  document.getElementById("appMessage").textContent = "";
-
-  message("");
-
-}
-
-db.auth.onAuthStateChange((event,session) => {
-
-  if(event === "SIGNED_OUT"){
-
-    currentProfile = null;
-    availableBranches = [];
-
-    document.getElementById("dashboard").classList.add("hidden");
-    document.getElementById("login").classList.remove("hidden");
-
-  }
-
-});
-
+document.querySelectorAll("[data-page]").forEach(button=>button.addEventListener("click",()=>openPage(button.dataset.page)));
 </script>
-
 </body>
 </html>
