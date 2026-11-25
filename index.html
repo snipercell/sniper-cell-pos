@@ -1,227 +1,103 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101827">
-<title>نظام نقاط البيع</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827"><title>SNIPER CELL POS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{color-scheme:dark;--bg:#0b1220;--panel:#121e30;--panel2:#1b2b42;--line:#263a55;--text:#edf4ff;--muted:#9eb0c8;--accent:#4b9cff;--good:#32c48d}
-*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(ellipse at 80% -20%,#18385c 0,transparent 42%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;min-height:100vh}
-button,input,select{font:inherit}
-button{cursor:pointer}
-.shell{min-height:100vh;display:grid;grid-template-columns:250px 1fr}
-.sidebar{background:#0e1929;border-left:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;gap:24px}
-.brand{display:flex;align-items:center;gap:12px;padding:8px}
-.brand-mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#4b9cff,#2461bd);display:grid;place-items:center;font-weight:800}
-.brand-name{font-size:16px;font-weight:750}.brand-sub{font-size:12px;color:var(--muted);margin-top:3px}
-.nav-label{font-size:11px;color:#7186a2;padding:0 12px;margin-bottom:8px}
-.nav-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:11px;color:#c7d5e8;background:transparent;border:1px solid transparent}
-.nav-item.active{background:#1a3150;border-color:#2b4b70;color:white}
-.nav-item span:first-child{width:24px;text-align:center}
-.side-note{margin-top:auto;padding:14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:12px;line-height:1.7}
-main{padding:28px;max-width:1500px;width:100%;margin:auto}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
-.eyebrow{color:var(--muted);font-size:13px}.heading{font-size:clamp(22px,3vw,30px);font-weight:800;margin:6px 0}
-.user-area{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);padding:9px 12px;border-radius:13px}
-.avatar{width:36px;height:36px;border-radius:50%;background:#244a76;display:grid;place-items:center}
-.muted{color:var(--muted)}.panel{background:linear-gradient(145deg,#15243a,#101b2c);border:1px solid var(--line);border-radius:18px;padding:22px}
-.welcome{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:20px}
-.welcome p{color:var(--muted);margin:8px 0 0;line-height:1.7}
-.pill{font-size:12px;color:#a9d7ff;background:#18395c;border:1px solid #28517b;padding:7px 11px;border-radius:99px;white-space:nowrap}
-.section-title{font-size:17px;font-weight:750;margin:28px 0 14px}
-.modules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.module{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:19px;min-height:120px}
-.module-icon{font-size:24px;margin-bottom:12px}.module h3{font-size:15px;margin:0 0 6px}.module p{font-size:12px;color:var(--muted);margin:0;line-height:1.6}
-.login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px}
-.login-card{width:min(100%,440px);padding:30px}
-.login-card .brand{padding:0;margin-bottom:28px}
-label{display:block;color:#c5d3e6;font-size:13px;margin:16px 0 7px}
-input,select{width:100%;padding:14px 13px;border-radius:11px;border:1px solid var(--line);background:#0d1929;color:white;outline:none}
-input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #4b9cff22}
-.primary{width:100%;border:0;border-radius:11px;background:linear-gradient(135deg,#4b9cff,#2869c1);color:white;font-weight:750;padding:14px;margin-top:20px}
-.primary:disabled{opacity:.55;cursor:wait}
-.message{min-height:24px;color:#ffb6a9;font-size:13px;margin-top:12px;line-height:1.6}
-.hidden{display:none!important}
-.branch-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
-.branch-box select{max-width:320px}
-.logout{border:1px solid var(--line);background:transparent;color:#d6e2f1;padding:9px 13px;border-radius:10px}
-@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{display:none}main{padding:18px}.modules{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){main{padding:14px}.topbar{align-items:flex-start}.user-area .user-text{display:none}.welcome{align-items:flex-start;flex-direction:column}.modules{grid-template-columns:1fr 1fr;gap:10px}.module{padding:14px;min-height:110px}.panel{padding:17px}}
-</style>
-</head>
-<body>
-<section id="loginView" class="login-wrap">
-  <div class="panel login-card">
-    <div class="brand"><div class="brand-mark">POS</div><div><div class="brand-name">نظام نقاط البيع</div><div class="brand-sub">إدارة المبيعات والمخزون والفروع</div></div></div>
-    <h1 class="heading">تسجيل الدخول</h1>
-    <p class="muted">سجّل الدخول بحسابك المصرّح به للمتابعة.</p>
-    <form id="loginForm">
-      <label for="username">اسم المستخدم</label>
-      <input id="username" type="text" autocomplete="username" required minlength="3" maxlength="40">
-      <label for="password">كلمة المرور</label>
-      <input id="password" type="password" autocomplete="current-password" required>
-      <button id="loginBtn" class="primary" type="submit">دخول</button>
-      <div id="loginMessage" class="message" role="status"></div>
-    </form>
-    <button id="showRequestBtn" class="logout" style="width:100%;margin-top:10px">طلب إنشاء حساب جديد</button>
-    <form id="requestForm" class="hidden">
-      <h2 style="font-size:18px;margin-top:24px">طلب حساب جديد</h2>
-      <p class="muted" style="font-size:13px;line-height:1.7">سيبقى الطلب معلّقاً إلى أن تتم مراجعته والموافقة عليه من الإدارة.</p>
-      <label for="requestName">الاسم الكامل</label><input id="requestName" required maxlength="100" autocomplete="name">
-      <label for="requestUsername">اسم المستخدم المطلوب</label><input id="requestUsername" required minlength="3" maxlength="40" autocomplete="username">
-      <label for="requestEmail">إيميل للتواصل وإعداد كلمة المرور</label><input id="requestEmail" type="email" required autocomplete="email">
-      <button id="requestBtn" class="primary" type="submit">إرسال طلب الحساب</button>
-      <div id="requestMessage" class="message" role="status"></div>
-      <button id="backToLoginBtn" class="logout" type="button" style="width:100%;margin-top:8px">العودة لتسجيل الدخول</button>
-    </form>
-  </div>
-</section>
-<div id="appView" class="shell hidden">
-  <aside class="sidebar">
-    <div class="brand"><div class="brand-mark">POS</div><div><div class="brand-name">نظام نقاط البيع</div><div class="brand-sub">لوحة الإدارة</div></div></div>
-    <div><div class="nav-label">القائمة الرئيسية</div><div class="nav-item active"><span>⌂</span><span>الرئيسية</span></div></div>
-    <div class="side-note">نسخة تطويرية. سيتم تفعيل كل قسم بعد ربط عملياته وقواعد صلاحياته بقاعدة البيانات.</div>
-  </aside>
-  <main>
-    <div class="topbar">
-      <div><div class="eyebrow">مساحة العمل</div><div class="heading">لوحة التحكم</div></div>
-      <div class="user-area"><div class="avatar">👤</div><div class="user-text"><div id="userName">المستخدم</div><div id="userRole" class="muted" style="font-size:12px">—</div></div><button id="logoutBtn" class="logout">خروج</button></div>
-    </div>
-    <section class="panel">
-      <div class="welcome"><div><h2 style="margin:0;font-size:22px">أهلاً بك</h2><p>تم تسجيل الدخول بنجاح. اختر الفرع المسموح لحسابك.</p></div><span class="pill">اتصال قاعدة البيانات</span></div>
-      <div class="branch-box"><strong>الفرع الحالي</strong><select id="branchSelect" aria-label="اختيار الفرع"></select><span id="branchStatus" class="muted"></span></div>
-    </section>
-    <div class="section-title">أقسام النظام</div>
-    <div class="modules">
-      <article class="module"><div class="module-icon">🛒</div><h3>المبيعات</h3><p>فواتير البيع والمدفوعات والمرتجعات</p></article>
-      <article class="module"><div class="module-icon">📦</div><h3>المشتريات</h3><p>فواتير الموردين وإدخال البضاعة</p></article>
-      <article class="module"><div class="module-icon">🏷️</div><h3>المخزون والأصناف</h3><p>الباركود والصور والأرقام التسلسلية</p></article>
-      <article class="module"><div class="module-icon">🔧</div><h3>الصيانة</h3><p>طلبات الصيانة وحالات الإصلاح</p></article>
-      <article class="module"><div class="module-icon">💵</div><h3>الصندوق والمصاريف</h3><p>حركة النقد بالدولار والليرة</p></article>
-      <article class="module"><div class="module-icon">📊</div><h3>التقارير</h3><p>ملخصات المبيعات والمخزون والأرباح</p></article>
-      <article class="module"><div class="module-icon">📱</div><h3>التعبئة</h3><p>عمليات Alfa وTouch وهوامش الربح</p></article>
-      <article class="module"><div class="module-icon">👥</div><h3>المستخدمون والفروع</h3><p>إدارة الحسابات والتعيينات والصلاحيات</p></article>
-      <article class="module"><div class="module-icon">⚙️</div><h3>إعدادات النظام</h3><p>الاسم والشعار وسعر الصرف والإعدادات</p></article>
-    </div>
-    <p class="muted" style="font-size:12px;margin-top:22px">الأقسام المعروضة هنا تعريفية حالياً؛ لن تظهر كوظائف جاهزة قبل تنفيذ وربط عملياتها واختبارها.</p>
-  </main>
-</div>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#142238;--panel2:#1b2d46;--line:#2b405d;--txt:#eef5ff;--muted:#9fb1c9;--blue:#438ee8;--green:#269b70;--red:#b84c58}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% -20%,#1a3d63 0,transparent 42%),var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
+.hidden{display:none!important}.login-wrap{min-height:100vh;display:grid;place-items:center;padding:18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px}.login-card{width:min(100%,440px);padding:30px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.mark{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#4b9cff,#245db2);display:grid;place-items:center;font-weight:900}.muted{color:var(--muted)}h1{font-size:24px;margin:8px 0}label{display:block;font-size:13px;color:#cbd8e9;margin:13px 0 6px}input,select,textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0d1929;color:white;outline:none}textarea{min-height:80px;resize:vertical}.btn{border:0;border-radius:10px;padding:12px 16px;color:white;font-weight:700;background:var(--blue)}.btn.green{background:var(--green)}.btn.red{background:var(--red)}.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}.btn:disabled{opacity:.5}.wide{width:100%;margin-top:15px}.msg{font-size:13px;min-height:22px;margin-top:10px;line-height:1.7;color:#ffbdad}
+.layout{min-height:100vh;display:grid;grid-template-columns:235px 1fr}.side{background:#0e1929;border-left:1px solid var(--line);padding:18px 12px;display:flex;flex-direction:column;gap:7px}.side .brand{padding:8px;margin-bottom:14px}.nav{display:flex;align-items:center;gap:10px;text-align:right;width:100%;background:transparent;border:1px solid transparent;color:#c8d6e8;padding:12px;border-radius:10px}.nav.active,.nav:hover{background:#1b3453;border-color:#2d5078;color:white}.nav small{color:var(--muted)}.sidefoot{margin-top:auto;font-size:11px;line-height:1.7;color:var(--muted);padding:12px}
+main{padding:24px;max-width:1500px;width:100%;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}.title{font-size:25px;font-weight:800}.topright{display:flex;gap:9px;align-items:center}.panel{background:linear-gradient(145deg,#172942,#101d30);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.field.full{grid-column:1/-1}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;min-width:550px}th,td{text-align:right;padding:11px;border-bottom:1px solid var(--line);font-size:13px}th{color:#a9c6e7;font-weight:700}.tag{display:inline-block;background:#18395c;border:1px solid #2d527b;color:#b9dcff;padding:4px 8px;border-radius:99px;font-size:11px}.sectionhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px}.sectionhead h2{font-size:18px;margin:0}.notice{padding:12px;border-radius:10px;background:#182d46;color:#c5d8ee;font-size:13px;line-height:1.7}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.side{position:sticky;top:0;z-index:5;display:flex;flex-direction:row;overflow:auto;padding:8px;border-left:0;border-bottom:1px solid var(--line)}.side .brand,.sidefoot{display:none}.nav{white-space:nowrap;width:auto;padding:9px 12px}main{padding:14px}.grid{grid-template-columns:1fr}}
+@media(max-width:520px){.formgrid{grid-template-columns:1fr}.field.full{grid-column:auto}.title{font-size:21px}.top{align-items:flex-start;flex-direction:column}.topright{width:100%;justify-content:space-between}}
+</style></head><body>
+<section id="loginView" class="login-wrap"><div class="card login-card">
+<div class="brand"><div class="mark">SC</div><div><b>SNIPER CELL POS</b><div class="muted" style="font-size:12px">نظام إدارة المبيعات والفروع</div></div></div>
+<h1>تسجيل الدخول</h1><p class="muted">استخدم اسم المستخدم وكلمة المرور.</p>
+<form id="loginForm"><label>اسم المستخدم</label><input id="username" autocomplete="username" required><label>كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required><button class="btn wide" id="loginBtn">دخول</button><div id="loginMsg" class="msg"></div></form>
+<button class="btn ghost wide" id="showReq">طلب إنشاء حساب</button>
+<form id="reqForm" class="hidden"><h3>طلب حساب جديد</h3><label>الاسم الكامل</label><input id="reqName" required><label>اسم المستخدم</label><input id="reqUser" required minlength="3"><label>البريد الإلكتروني</label><input id="reqEmail" type="email" required><button class="btn wide">إرسال الطلب</button><div id="reqMsg" class="msg"></div><button type="button" class="btn ghost wide" id="backLogin">رجوع</button></form>
+</div></section>
+<div id="appView" class="layout hidden">
+<aside class="side"><div class="brand"><div class="mark">SC</div><div><b>SNIPER CELL</b><div class="muted" style="font-size:11px">POS TESTING</div></div></div>
+<button class="nav active" data-page="home">⌂ الرئيسية</button><button class="nav" data-page="sales">🛒 المبيعات</button><button class="nav" data-page="products">📦 المنتجات والمخزون</button><button class="nav" data-page="purchases">🧾 المشتريات</button><button class="nav" data-page="expenses">💵 المصاريف</button><button class="nav" data-page="maintenance">🔧 الصيانة</button><button class="nav" data-page="topups">📱 التعبئة</button><button class="nav" data-page="reports">📊 التقارير</button><button class="nav" data-page="admin">👥 الفروع والمستخدمون</button><button class="nav" data-page="settings">⚙️ الإعدادات</button><div class="sidefoot">نسخة تجريبية — كل التغييرات على Testing فقط.</div></aside>
+<main><div class="top"><div><div class="muted" style="font-size:12px">مساحة العمل</div><div class="title" id="pageTitle">الرئيسية</div></div><div class="topright"><span id="who" class="tag"></span><button class="btn ghost" id="logout">خروج</button></div></div>
+<div id="pageContent"></div></main></div>
 <script>
-const SUPABASE_URL = "https://opbzfgmzpngstgdoihrc.supabase.co";
-const SUPABASE_KEY = "sb_publishable_LeuENOe_jPZ7Cli5W3Nuvw_4b1zzflB";
-const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let currentProfile = null;
-let allowedBranches = [];
-
-const $ = (id) => document.getElementById(id);
-function showLogin(message = "") {
-  $("appView").classList.add("hidden");
-  $("loginView").classList.remove("hidden");
-  $("loginMessage").textContent = message;
+const URL="https://opbzfgmzpngstgdoihrc.supabase.co", KEY="sb_publishable_LeuENOe_jPZ7Cli5W3Nuvw_4b1zzflB";
+const db=window.supabase.createClient(URL,KEY);const $=id=>document.getElementById(id);
+let user=null,profile=null,branches=[],branchId=null,perms=new Set(),products=[],users=[],page="home";
+const permissionList=[
+["branches.manage","إدارة الفروع"],["users.manage","إدارة المستخدمين والصلاحيات"],["products.view","عرض المنتجات"],["products.manage","إدارة المنتجات والمخزون"],["sales.view","عرض المبيعات"],["sales.create","إنشاء فاتورة بيع"],["sales.manage","تعديل/إلغاء المبيعات"],["purchases.view","عرض المشتريات"],["purchases.create","تسجيل مشتريات"],["purchases.manage","إدارة المشتريات"],["expenses.view","عرض المصاريف"],["expenses.create","تسجيل مصروف"],["expenses.review","مراجعة المصاريف"],["maintenance.view","عرض الصيانة"],["maintenance.create","تسجيل صيانة"],["maintenance.manage","إدارة الصيانة"],["topups.view","عرض التعبئة"],["topups.create","تسجيل التعبئة"],["cash.view","عرض الصندوق"],["cash.create","حركة الصندوق"],["reports.view","عرض التقارير"],["settings.manage","تعديل الإعدادات"]
+];
+function can(k){return perms.has("*")||perms.has(k)}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function msg(id,t,ok=false){const e=$(id);if(e){e.textContent=t;e.style.color=ok?"#58d6a6":"#ffbdad"}}
+async function call(fn,args){const {data,error}=await db.rpc(fn,args);if(error)throw error;return data}
+async function loadContext(u){
+ user=u;const {data:p,error}=await db.from("profiles").select("*").eq("id",u.id).single();if(error)throw error;if(!p?.active)throw Error("الحساب غير مفعّل");profile=p;
+ const [{data:pb,error:pe},{data:allb,error:be},{data:up,error:ue}]=await Promise.all([
+ db.from("user_branches").select("branch_id").eq("user_id",u.id),
+ db.from("branches").select("id,name,active").eq("active",true).order("name"),
+ db.from("user_permissions").select("permission_key").eq("user_id",u.id)]);
+ if(pe)throw pe;if(be)throw be;if(ue)throw ue;perms=new Set((up||[]).map(x=>x.permission_key));
+ const ids=new Set((pb||[]).map(x=>x.branch_id));
+ branches=perms.has("*")||perms.has("branches.manage")?(allb||[]):(allb||[]).filter(b=>ids.has(b.id));
+ branchId=branches[0]?.id||null;
+ $("who").textContent=(p.full_name||p.username)+" · "+(p.role||"employee");
+ $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");
+ if(branchId){await renderPage("home")}else{await renderPage("admin")}
 }
-function showApp() {
-  $("loginView").classList.add("hidden");
-  $("appView").classList.remove("hidden");
+async function signIn(e){e.preventDefault();$("loginBtn").disabled=true;msg("loginMsg","جارٍ التحقق...");
+ try{const r=await fetch(URL+"/functions/v1/username-login",{method:"POST",headers:{"Content-Type":"application/json","apikey":KEY},body:JSON.stringify({username:$("username").value.trim(),password:$("password").value})});const d=await r.json();if(!r.ok)throw Error(d.error||"فشل الدخول");const {error}=await db.auth.setSession({access_token:d.access_token,refresh_token:d.refresh_token});if(error)throw error;const {data:{user:u}}=await db.auth.getUser();await loadContext(u)}
+ catch(e){msg("loginMsg",e.message)}finally{$("loginBtn").disabled=false}}
+$("loginForm").addEventListener("submit",signIn);
+$("showReq").onclick=()=>{$("loginForm").classList.add("hidden");$("showReq").classList.add("hidden");$("reqForm").classList.remove("hidden")};
+$("backLogin").onclick=()=>{$("reqForm").classList.add("hidden");$("loginForm").classList.remove("hidden");$("showReq").classList.remove("hidden")};
+$("reqForm").addEventListener("submit",async e=>{e.preventDefault();try{const r=await fetch(URL+"/functions/v1/request-account",{method:"POST",headers:{"Content-Type":"application/json","apikey":KEY},body:JSON.stringify({full_name:$("reqName").value.trim(),username:$("reqUser").value.trim(),email:$("reqEmail").value.trim()})});const d=await r.json();if(!r.ok)throw Error(d.error);msg("reqMsg",d.message||"تم إرسال الطلب للمراجعة",true);$("reqForm").reset()}catch(x){msg("reqMsg",x.message)}});
+$("logout").onclick=async()=>{await db.auth.signOut();location.reload()};
+document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>renderPage(b.dataset.page));
+async function renderPage(p){page=p;document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.page===p));const names={home:"الرئيسية",sales:"المبيعات",products:"المنتجات والمخزون",purchases:"المشتريات",expenses:"المصاريف",maintenance:"الصيانة",topups:"التعبئة",reports:"التقارير",admin:"الفروع والمستخدمون",settings:"الإعدادات"};$("pageTitle").textContent=names[p];const host=$("pageContent");host.innerHTML='<div class="panel">جارٍ تحميل البيانات...</div>';
+ try{if(p==="home")await home(host);else if(p==="admin")await admin(host);else if(p==="products")await productPage(host);else if(p==="sales")await salesPage(host);else if(p==="expenses")await expensesPage(host);else if(p==="maintenance")await maintenancePage(host);else if(p==="topups")await topupsPage(host);else if(p==="purchases")await purchasesPage(host);else if(p==="reports")await reportsPage(host);else if(p==="settings")await settingsPage(host)}catch(e){host.innerHTML='<div class="panel notice">'+esc(e.message)+'</div>'}}
+function branchSelect(){return '<select id="branchPick">'+branches.map(b=>'<option value="'+b.id+'" '+(b.id===branchId?'selected':'')+'>'+esc(b.name)+'</option>').join("")+'</select>'}
+async function home(h){h.innerHTML='<div class="panel"><div class="sectionhead"><h2>مرحباً '+esc(profile.full_name||profile.username)+'</h2><span class="tag">بيئة Testing</span></div><p class="muted">اختر الفرع للعمل عليه. الأقسام تظهر حسب الصلاحيات الممنوحة لحسابك.</p><label>الفرع الحالي</label>'+branchSelect()+'</div><div class="grid"><div class="panel"><h3>حالة الحساب</h3><p>الدور: '+esc(profile.role)+'</p><p>الفروع المتاحة: '+branches.length+'</p><p>الصلاحيات: '+(perms.has("*")?"كاملة":perms.size)+'</p></div><div class="panel"><h3>تنبيه</h3><p class="muted">ابدأ بإنشاء فرع، ثم أضف المنتجات والمخزون. لا توجد أسماء أو فروع جاهزة مسبقاً.</p></div></div>';
+ $("branchPick").onchange=e=>{branchId=e.target.value;renderPage("home")}}
+async function admin(h){let html='<div class="panel"><div class="sectionhead"><h2>إنشاء فرع جديد</h2><span class="tag">يتطلب صلاحية إدارة الفروع</span></div><div class="formgrid"><div class="field"><label>اسم الفرع</label><input id="newBranch" placeholder="اكتب اسم الفرع"></div></div><div class="actions"><button class="btn" id="addBranch">إنشاء الفرع وتعييني عليه</button></div><div id="adminMsg" class="msg"></div></div>';
+ if(can("users.manage")){const {data:u,error}=await db.from("profiles").select("id,full_name,username,role,active").order("created_at");if(error)throw error;users=u||[];html+='<div class="panel"><div class="sectionhead"><h2>المستخدمون والصلاحيات</h2><span class="tag">تعيين يدوي</span></div><div class="tablewrap"><table><thead><tr><th>المستخدم</th><th>الدور</th><th>الفروع</th><th>الحالة</th><th>إدارة</th></tr></thead><tbody>'+users.map(u=>'<tr><td>'+esc(u.full_name)+'<br><small class="muted">'+esc(u.username)+'</small></td><td>'+esc(u.role)+'</td><td><button class="btn ghost" data-assign="'+u.id+'">تعيين</button></td><td>'+ (u.active?'نشط':'موقوف')+'</td><td><button class="btn ghost" data-perms="'+u.id+'">الصلاحيات</button></td></tr>').join("")+'</tbody></table></div><div id="userEditor"></div></div>'}
+ html+='<div class="panel"><h2>الفروع الموجودة</h2><div class="tablewrap"><table><thead><tr><th>الفرع</th><th>الحالة</th><th>اختيار</th></tr></thead><tbody>'+branches.map(b=>'<tr><td>'+esc(b.name)+'</td><td>نشط</td><td><button class="btn ghost" data-usebranch="'+b.id+'">اختيار</button></td></tr>').join("")+'</tbody></table></div></div>';
+ h.innerHTML=html;
+ if($("addBranch"))$("addBranch").onclick=async()=>{try{if(!can("branches.manage"))throw Error("لا تملك صلاحية إدارة الفروع");const name=$("newBranch").value.trim();if(!name)throw Error("اكتب اسم الفرع");const {data:b,error}=await db.from("branches").insert({name}).select().single();if(error)throw error;const {error:ae}=await db.from("user_branches").insert({user_id:user.id,branch_id:b.id,assigned_by:user.id});if(ae)throw ae;msg("adminMsg","تم إنشاء الفرع وتعيين حسابك عليه",true);await loadContext(user)}catch(e){msg("adminMsg",e.message)}};
+ h.querySelectorAll("[data-usebranch]").forEach(b=>b.onclick=()=>{branchId=b.dataset.usebranch;renderPage("home")});
+ h.querySelectorAll("[data-assign]").forEach(b=>b.onclick=()=>editUser(b.dataset.assign,false));
+ h.querySelectorAll("[data-perms]").forEach(b=>b.onclick=()=>editUser(b.dataset.perms,true));
 }
-async function loadUser(user) {
-  const {data: profile, error} = await db.from("profiles")
-    .select("id,full_name,role,active,is_super_admin")
-    .eq("id", user.id).maybeSingle();
-  if (error) throw error;
-  if (!profile || profile.active !== true) throw new Error("الحساب غير موجود أو غير مفعّل.");
-
-  const [{data: assignments, error: assignmentError}, {data: branches, error: branchError}] = await Promise.all([
-    db.from("user_branches").select("branch_id").eq("user_id", user.id),
-    db.from("branches").select("id,name").eq("active", true).order("name")
-  ]);
-  if (assignmentError) throw assignmentError;
-  if (branchError) throw branchError;
-
-  const assignedIds = new Set((assignments || []).map(x => x.branch_id));
-  allowedBranches = profile.is_super_admin
-    ? (branches || [])
-    : (branches || []).filter(b => assignedIds.has(b.id));
-  if (!allowedBranches.length) throw new Error("لا يوجد فرع مفعّل ومسموح لهذا الحساب. راجع الإدارة.");
-
-  currentProfile = profile;
-  $("userName").textContent = profile.full_name || user.email || "مستخدم";
-  $("userRole").textContent = profile.is_super_admin ? "مدير كامل الصلاحيات" : (profile.role || "موظف");
-  $("branchSelect").replaceChildren(...allowedBranches.map(b => {
-    const option = document.createElement("option");
-    option.value = b.id; option.textContent = b.name; return option;
-  }));
-  $("branchStatus").textContent = allowedBranches.length + " فرع مسموح";
-  showApp();
+async function editUser(id,permissionMode){const u=users.find(x=>x.id===id);const box=$("userEditor");if(!u||!box)return;const [{data:assigned},{data:granted}]=await Promise.all([db.from("user_branches").select("branch_id").eq("user_id",id),db.from("user_permissions").select("permission_key").eq("user_id",id)]);const assignedSet=new Set((assigned||[]).map(x=>x.branch_id)),grantSet=new Set((granted||[]).map(x=>x.permission_key));
+ if(permissionMode){box.innerHTML='<hr><h3>صلاحيات '+esc(u.full_name)+'</h3><label><input type="checkbox" id="allPerms" style="width:auto" '+(grantSet.has("*")?'checked':'')+'> مدير كامل الصلاحيات (*)</label><div class="formgrid">'+permissionList.map(([k,n])=>'<label><input type="checkbox" class="permCheck" value="'+k+'" style="width:auto" '+(grantSet.has(k)?'checked':'')+'> '+n+'</label>').join("")+'</div><button class="btn" id="savePerms">حفظ الصلاحيات</button><div id="editMsg" class="msg"></div>';
+ $("allPerms").onchange=e=>box.querySelectorAll(".permCheck").forEach(c=>{c.checked=e.target.checked;c.disabled=e.target.checked});
+ box.querySelectorAll(".permCheck").forEach(c=>c.disabled=grantSet.has("*"));
+ $("savePerms").onclick=async()=>{try{const keys=$("allPerms").checked?["*"]:[...box.querySelectorAll(".permCheck:checked")].map(c=>c.value);const {error:de}=await db.from("user_permissions").delete().eq("user_id",id);if(de)throw de;if(keys.length){const rows=keys.map(permission_key=>({user_id:id,permission_key,granted_by:user.id}));const {error:ie}=await db.from("user_permissions").insert(rows);if(ie)throw ie}msg("editMsg","تم حفظ الصلاحيات",true);if(id===user.id)await loadContext(user)}catch(e){msg("editMsg",e.message)}};
+ }else{box.innerHTML='<hr><h3>فروع '+esc(u.full_name)+'</h3><div class="formgrid">'+branches.map(b=>'<label><input type="checkbox" class="branchCheck" value="'+b.id+'" style="width:auto" '+(assignedSet.has(b.id)?'checked':'')+'> '+esc(b.name)+'</label>').join("")+'</div><label>الدور الوصفي</label><select id="rolePick"><option value="employee">موظف</option><option value="manager" '+(u.role==="manager"?'selected':'')+'>مدير</option></select><button class="btn" id="saveBranches">حفظ التعيينات</button><div id="editMsg" class="msg"></div>';
+ $("saveBranches").onclick=async()=>{try{const ids=[...box.querySelectorAll(".branchCheck:checked")].map(c=>c.value);const {error:de}=await db.from("user_branches").delete().eq("user_id",id);if(de)throw de;if(ids.length){const {error:ie}=await db.from("user_branches").insert(ids.map(branch_id=>({user_id:id,branch_id,assigned_by:user.id})));if(ie)throw ie}const {error:ue}=await db.from("profiles").update({role:$("rolePick").value}).eq("id",id);if(ue)throw ue;msg("editMsg","تم حفظ الفروع والدور",true)}catch(e){msg("editMsg",e.message)}};
+ }}
+async function productPage(h){if(!can("products.view")&&!can("products.manage"))throw Error("لا تملك صلاحية عرض المنتجات");if(!branchId)throw Error("أنشئ فرعاً أولاً");const {data:rows,error}=await db.from("branch_stock").select("quantity,product:products(id,name,barcode,category,tracking_type,protector_type,sell_price_usd,purchase_price_usd)").eq("branch_id",branchId);if(error)throw error;products=(rows||[]).map(x=>({...x.product,quantity:x.quantity}));let html='<div class="panel"><div class="sectionhead"><h2>إضافة صنف</h2><span class="tag">المخزون للفرع الحالي</span></div><div class="formgrid"><div><label>اسم المنتج</label><input id="pName"></div><div><label>الباركود</label><input id="pBarcode"></div><div><label>التصنيف</label><input id="pCat"></div><div><label>نوع التتبع</label><select id="pTrack"><option value="quantity">كمية</option><option value="imei">IMEI</option><option value="serial">Serial</option></select></div><div><label>نوع الحماية</label><select id="pProtector"><option value="">غير محدد</option><option value="standard">عادي</option><option value="machine_cut">قص ماكينة</option></select></div><div><label>سعر الشراء $</label><input id="pBuy" type="number" min="0" step=".01" value="0"></div><div><label>سعر البيع $</label><input id="pSell" type="number" min="0" step=".01" value="0"></div><div><label>الكمية الافتتاحية</label><input id="pQty" type="number" min="0" step=".01" value="0"></div></div><button class="btn" id="saveProduct">حفظ المنتج</button><div id="pMsg" class="msg"></div></div><div class="panel"><h2>مخزون الفرع</h2><div class="tablewrap"><table><thead><tr><th>المنتج</th><th>باركود</th><th>النوع</th><th>الكمية</th><th>شراء $</th><th>بيع $</th></tr></thead><tbody>'+products.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+esc(p.barcode)+'</td><td>'+esc(p.tracking_type)+'</td><td>'+p.quantity+'</td><td>'+p.purchase_price_usd+'</td><td>'+p.sell_price_usd+'</td></tr>').join("")+'</tbody></table></div></div>';h.innerHTML=html;
+ $("saveProduct").onclick=async()=>{try{if(!can("products.manage"))throw Error("لا تملك صلاحية إدارة المنتجات");const payload={name:$("pName").value.trim(),barcode:$("pBarcode").value.trim()||null,category:$("pCat").value.trim()||null,tracking_type:$("pTrack").value,protector_type:$("pProtector").value||null,purchase_price_usd:Number($("pBuy").value),sell_price_usd:Number($("pSell").value),created_by:user.id};if(!payload.name)throw Error("اسم المنتج مطلوب");const {data:p,error}=await db.from("products").insert(payload).select().single();if(error)throw error;const {error:se}=await db.from("branch_stock").insert({branch_id:branchId,product_id:p.id,quantity:Number($("pQty").value)});if(se)throw se;msg("pMsg","تم حفظ المنتج والمخزون",true);await productPage(h)}catch(e){msg("pMsg",e.message)}}}
+async function salesPage(h){if(!can("sales.create"))throw Error("لا تملك صلاحية إنشاء المبيعات");if(!branchId)throw Error("أنشئ فرعاً أولاً");const {data:st,error}=await db.from("branch_stock").select("quantity,product:products(id,name,sell_price_usd)").eq("branch_id",branchId);if(error)throw error;const available=(st||[]).filter(x=>x.product&&x.quantity>0);h.innerHTML='<div class="panel"><h2>فاتورة بيع</h2><div class="formgrid"><div><label>العميل</label><input id="sCustomer"></div><div><label>هاتف العميل</label><input id="sPhone"></div><div><label>الصنف</label><select id="sProduct">'+available.map(x=>'<option value="'+x.product.id+'" data-price="'+x.product.sell_price_usd+'" data-name="'+esc(x.product.name)+'">'+esc(x.product.name)+' — متوفر '+x.quantity+'</option>').join("")+'</select></div><div><label>الكمية</label><input id="sQty" type="number" min="1" value="1"></div><div><label>سعر البيع $</label><input id="sPrice" type="number" step=".01" min="0"></div><div><label>سعر الصرف LBP لكل $</label><input id="sRate" type="number" min="1" step="1"></div></div><div class="actions"><button class="btn ghost" id="addItem">إضافة للفاتورة</button></div><div id="cart"></div><div class="formgrid"><div><label>الدفع بالدولار $</label><input id="payUsd" type="number" min="0" step=".01" value="0"></div><div><label>الدفع بالليرة LBP</label><input id="payLbp" type="number" min="0" step="1000" value="0"></div></div><button class="btn green" id="finishSale">حفظ وإتمام البيع</button><div id="sMsg" class="msg"></div></div>';
+ let cart=[];const redraw=()=>{$("cart").innerHTML='<p>الأصناف: '+cart.length+' | الإجمالي: $'+cart.reduce((a,x)=>a+x.quantity*x.unit_price_usd,0).toFixed(2)+'</p>'+cart.map(x=>'<div>'+esc(x.description)+' × '+x.quantity+' = $'+(x.quantity*x.unit_price_usd).toFixed(2)+'</div>').join("")};
+ $("sProduct").onchange=()=>{$("sPrice").value=$("sProduct").selectedOptions[0]?.dataset.price||0};$("sProduct").dispatchEvent(new Event("change"));
+ $("addItem").onclick=()=>{const o=$("sProduct").selectedOptions[0];if(!o)return;cart.push({product_id:o.value,description:o.dataset.name,quantity:Number($("sQty").value),unit_price_usd:Number($("sPrice").value)});redraw()};
+ $("finishSale").onclick=async()=>{try{const rate=Number($("sRate").value),total=cart.reduce((a,x)=>a+x.quantity*x.unit_price_usd,0),usd=Number($("payUsd").value),lbp=Number($("payLbp").value);if(!cart.length)throw Error("أضف صنفاً");if(!rate)throw Error("أدخل سعر الصرف");if(usd+lbp/rate<total)throw Error("المبلغ المدفوع أقل من الإجمالي");const payments=[];if(usd>0)payments.push({currency:"USD",amount:usd});if(lbp>0)payments.push({currency:"LBP",amount:lbp});const result=await call("create_pos_sale",{p_branch_id:branchId,p_customer_name:$("sCustomer").value,p_customer_phone:$("sPhone").value,p_items:cart,p_payments:payments,p_exchange_rate:rate});msg("sMsg","تم حفظ الفاتورة. الإجمالي $"+Number(result.total_usd).toFixed(2)+" — الباقي المكافئ $"+Number(result.change_usd_equivalent).toFixed(2),true);await salesPage(h)}catch(e){msg("sMsg",e.message)}}
 }
-$("loginForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const button = $("loginBtn");
-  button.disabled = true;
-  $("loginMessage").textContent = "جارٍ التحقق من اسم المستخدم وكلمة المرور...";
-  try {
-    const response = await fetch(SUPABASE_URL + "/functions/v1/username-login", {
-      method: "POST", headers: {"Content-Type":"application/json", "apikey":SUPABASE_KEY},
-      body: JSON.stringify({username:$("username").value.trim(),password:$("password").value})
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "تعذّر تسجيل الدخول.");
-    if (!result.access_token || !result.refresh_token) throw new Error("استجابة تسجيل الدخول غير مكتملة.");
-    const {error} = await db.auth.setSession({access_token:result.access_token,refresh_token:result.refresh_token});
-    if (error) throw error;
-    const {data:{user}} = await db.auth.getUser();
-    await loadUser(user);
-  } catch (error) {
-    $("loginMessage").textContent = error.message || "تعذّر تسجيل الدخول.";
-  } finally { button.disabled = false; }
-});
-$("showRequestBtn").addEventListener("click", () => {
-  $("loginForm").classList.add("hidden");
-  $("showRequestBtn").classList.add("hidden");
-  $("requestForm").classList.remove("hidden");
-  $("loginMessage").textContent = "";
-});
-$("backToLoginBtn").addEventListener("click", () => {
-  $("requestForm").classList.add("hidden");
-  $("loginForm").classList.remove("hidden");
-  $("showRequestBtn").classList.remove("hidden");
-});
-$("requestForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const button = $("requestBtn"); button.disabled = true;
-  $("requestMessage").textContent = "جارٍ إرسال الطلب...";
-  try {
-    const response = await fetch(SUPABASE_URL + "/functions/v1/request-account", {
-      method:"POST",headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY},
-      body:JSON.stringify({full_name:$("requestName").value.trim(),username:$("requestUsername").value.trim(),email:$("requestEmail").value.trim()})
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "تعذّر إرسال الطلب.");
-    $("requestMessage").style.color = result.notification_sent === false ? "#ffcf7a" : "#32c48d";
-    $("requestMessage").textContent = result.message || "تم حفظ طلبك للمراجعة. لن يتم تفعيل الحساب قبل الموافقة.";
-    $("requestForm").reset();
-  } catch(error) {
-    $("requestMessage").style.color = "#ffb6a9";
-    $("requestMessage").textContent = error.message || "خدمة طلب الحساب غير مهيأة بعد.";
-  } finally { button.disabled = false; }
-});
-$("logoutBtn").addEventListener("click", async () => {
-  const {error} = await db.auth.signOut();
-  if (error) { alert("تعذّر تسجيل الخروج: " + error.message); return; }
-  currentProfile = null; allowedBranches = []; showLogin();
-});
-db.auth.getSession().then(async ({data, error}) => {
-  if (error) return;
-  if (data.session?.user) {
-    try { await loadUser(data.session.user); }
-    catch (e) { await db.auth.signOut(); showLogin(e.message); }
-  }
-});
-db.auth.onAuthStateChange((event) => {
-  if (event === "SIGNED_OUT") showLogin();
-});
-</script>
-</body>
-</html>
+async function expensesPage(h){if(!can("expenses.view")&&!can("expenses.create"))throw Error("لا تملك صلاحية المصاريف");const {data:r,error}=await db.from("expenses").select("id,description,amount,currency,status,created_at,recorded_by").eq("branch_id",branchId).order("created_at",{ascending:false}).limit(100);if(error)throw error;h.innerHTML=(can("expenses.create")?'<div class="panel"><h2>تسجيل مصروف</h2><div class="formgrid"><div><label>البيان</label><input id="eDesc"></div><div><label>المبلغ</label><input id="eAmount" type="number" min=".01" step=".01"></div><div><label>العملة</label><select id="eCurrency"><option>USD</option><option>LBP</option></select></div></div><button class="btn" id="saveExpense">تسجيل المصروف</button><div id="eMsg" class="msg"></div></div>':'')+'<div class="panel"><h2>سجل المصاريف</h2><div class="tablewrap"><table><thead><tr><th>البيان</th><th>المبلغ</th><th>الحالة</th><th>المسجل</th><th>التاريخ</th><th></th></tr></thead><tbody>'+r.map(x=>'<tr><td>'+esc(x.description)+'</td><td>'+x.amount+' '+x.currency+'</td><td>'+x.status+'</td><td>'+x.recorded_by+'</td><td>'+new Date(x.created_at).toLocaleString("ar-LB")+'</td><td>'+(can("expenses.review")&&x.status==="pending"?'<button class="btn green" data-approve="'+x.id+'">اعتماد</button> <button class="btn red" data-reject="'+x.id+'">رفض</button>':'')+'</td></tr>').join("")+'</tbody></table></div></div>';
+ if($("saveExpense"))$("saveExpense").onclick=async()=>{try{const {error}=await db.from("expenses").insert({branch_id:branchId,description:$("eDesc").value.trim(),amount:Number($("eAmount").value),currency:$("eCurrency").value,recorded_by:user.id});if(error)throw error;msg("eMsg","تم تسجيل المصروف بانتظار المراجعة",true);await expensesPage(h)}catch(e){msg("eMsg",e.message)}};
+ h.querySelectorAll("[data-approve],[data-reject]").forEach(b=>b.onclick=async()=>{const approve=b.hasAttribute("data-approve"),id=b.dataset.approve||b.dataset.reject;const {error}=await db.from("expenses").update({status:approve?"approved":"rejected",reviewed_by:user.id,reviewed_at:new Date().toISOString()}).eq("id",id);if(error)alert(error.message);else expensesPage(h)})}
+async function maintenancePage(h){if(!can("maintenance.view")&&!can("maintenance.create"))throw Error("لا تملك صلاحية الصيانة");const {data:r,error}=await db.from("maintenance").select("*").eq("branch_id",branchId).order("created_at",{ascending:false}).limit(100);if(error)throw error;h.innerHTML=(can("maintenance.create")?'<div class="panel"><h2>استلام جهاز للصيانة</h2><div class="formgrid"><div><label>اسم العميل</label><input id="mName"></div><div><label>الهاتف</label><input id="mPhone"></div><div class="field full"><label>العطل</label><textarea id="mFault"></textarea></div><div class="field full"><label>القطع المطلوبة / المستعملة</label><textarea id="mParts"></textarea></div></div><button class="btn" id="saveMaint">حفظ الطلب</button><div id="mMsg" class="msg"></div></div>':'')+'<div class="panel"><h2>طلبات الصيانة</h2><div class="tablewrap"><table><thead><tr><th>العميل</th><th>الهاتف</th><th>العطل</th><th>القطع</th><th>الحالة</th></tr></thead><tbody>'+r.map(x=>'<tr><td>'+esc(x.customer_name)+'</td><td>'+esc(x.customer_phone)+'</td><td>'+esc(x.fault_description)+'</td><td>'+esc(x.parts)+'</td><td>'+esc(x.status)+'</td></tr>').join("")+'</tbody></table></div></div>';
+ if($("saveMaint"))$("saveMaint").onclick=async()=>{try{const {error}=await db.from("maintenance").insert({branch_id:branchId,customer_name:$("mName").value.trim(),customer_phone:$("mPhone").value.trim(),fault_description:$("mFault").value.trim(),parts:$("mParts").value,created_by:user.id});if(error)throw error;msg("mMsg","تم حفظ طلب الصيانة",true);await maintenancePage(h)}catch(e){msg("mMsg",e.message)}}}
+async function topupsPage(h){if(!can("topups.view")&&!can("topups.create"))throw Error("لا تملك صلاحية التعبئة");const {data:r,error}=await db.from("topups").select("*").eq("branch_id",branchId).order("created_at",{ascending:false}).limit(100);if(error)throw error;h.innerHTML=(can("topups.create")?'<div class="panel"><h2>تسجيل بطاقة / تعبئة</h2><div class="formgrid"><div><label>الشركة</label><select id="tProvider"><option>Alfa</option><option>Touch</option><option>Other</option></select></div><div><label>المدة</label><select id="tDuration"><option value="1_month">شهر</option><option value="3_months">3 أشهر</option><option value="1_year">سنة</option></select></div><div><label>قيمة البطاقة $</label><select id="tAmount"><option>2</option><option>3</option></select></div><div><label>الكلفة $</label><input id="tCost" type="number" min="0" step=".01" value="0"></div></div><button class="btn" id="saveTopup">حفظ العملية</button><div id="tMsg" class="msg"></div></div>':'')+'<div class="panel"><h2>سجل التعبئة</h2><div class="tablewrap"><table><thead><tr><th>الشركة</th><th>المدة</th><th>القيمة</th><th>الكلفة</th><th>التاريخ</th></tr></thead><tbody>'+r.map(x=>'<tr><td>'+x.provider+'</td><td>'+x.duration+'</td><td>$'+x.card_amount_usd+'</td><td>$'+x.cost_usd+'</td><td>'+new Date(x.created_at).toLocaleString("ar-LB")+'</td></tr>').join("")+'</tbody></table></div></div>';
+ if($("saveTopup"))$("saveTopup").onclick=async()=>{try{const {error}=await db.from("topups").insert({branch_id:branchId,provider:$("tProvider").value,duration:$("tDuration").value,card_amount_usd:Number($("tAmount").value),cost_usd:Number($("tCost").value),created_by:user.id});if(error)throw error;msg("tMsg","تم حفظ العملية",true);await topupsPage(h)}catch(e){msg("tMsg",e.message)}}}
+async function purchasesPage(h){if(!can("purchases.view")&&!can("purchases.create"))throw Error("لا تملك صلاحية المشتريات");h.innerHTML='<div class="panel notice">قاعدة بيانات المشتريات والموردين أصبحت جاهزة. واجهة إدخال فواتير الموردين وربطها بزيادة المخزون ما زالت ضمن الاختبارات التالية، لذلك لن أعرضها كميزة مكتملة حالياً.</div>'}
+async function reportsPage(h){if(!can("reports.view")&&!can("sales.view"))throw Error("لا تملك صلاحية التقارير");const [{data:s,error:se},{data:e,error:ee},{data:top,error:te}]=await Promise.all([db.from("sales").select("total_usd,created_at").eq("branch_id",branchId),db.from("expenses").select("amount,currency,status").eq("branch_id",branchId),db.from("topups").select("card_amount_usd,cost_usd").eq("branch_id",branchId)]);if(se)throw se;if(ee)throw ee;if(te)throw te;const total=(s||[]).reduce((a,x)=>a+Number(x.total_usd),0),approved=(e||[]).filter(x=>x.status==="approved");h.innerHTML='<div class="grid"><div class="panel"><div class="muted">عدد فواتير البيع</div><h2>'+s.length+'</h2></div><div class="panel"><div class="muted">إجمالي المبيعات $</div><h2>'+total.toFixed(2)+'</h2></div><div class="panel"><div class="muted">المصاريف المعتمدة</div><h2>'+approved.length+'</h2></div><div class="panel"><div class="muted">عمليات التعبئة</div><h2>'+top.length+'</h2></div></div><div class="panel notice">التقارير الحالية ملخص أولي؛ الأرباح التفصيلية وحركة الصندوق والجرد تحتاج إكمال واجهة المشتريات والتكاليف.</div>'}
+async function settingsPage(h){if(!can("settings.manage"))throw Error("لا تملك صلاحية الإعدادات");const {data:r,error}=await db.from("branch_fx_rates").select("*").eq("branch_id",branchId).maybeSingle();if(error)throw error;h.innerHTML='<div class="panel"><h2>سعر الصرف للفرع الحالي</h2><label>عدد الليرات لكل دولار</label><input id="fxRate" type="number" min="1" step="1" value="'+(r?.lbp_per_usd||"")+'"><button class="btn" id="saveFx">حفظ سعر الصرف</button><div id="fxMsg" class="msg"></div></div>';$("saveFx").onclick=async()=>{try{const {error}=await db.from("branch_fx_rates").upsert({branch_id:branchId,lbp_per_usd:Number($("fxRate").value),updated_by:user.id});if(error)throw error;msg("fxMsg","تم حفظ سعر الصرف",true)}catch(e){msg("fxMsg",e.message)}}}
+db.auth.getSession().then(async({data})=>{if(data.session?.user){try{await loadContext(data.session.user)}catch(e){await db.auth.signOut();$("loginMsg").textContent=e.message}}});
+</script></body></html>
