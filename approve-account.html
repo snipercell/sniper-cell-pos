@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>مراجعة طلب حساب - SNIPER CELL</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#17263b;--line:#30445f;--text:#edf4ff;--muted:#a7b8ce;--blue:#347bd4;--green:#237c55;--red:#943e48}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(ellipse at 50% -20%,#1c4269 0,transparent 55%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+.card{width:min(100%,520px);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px;box-shadow:0 20px 60px #0005}
+h1{font-size:23px;margin:0 0 8px}.muted{color:var(--muted);line-height:1.8;font-size:14px}
+label{display:block;margin:20px 0 8px;font-size:14px}input{width:100%;padding:15px;border-radius:10px;border:1px solid var(--line);background:#0d1929;color:white;font-size:23px;text-align:center;letter-spacing:5px}
+button{border:0;border-radius:10px;padding:13px 16px;color:white;font-weight:700;cursor:pointer}.primary{width:100%;background:var(--blue);margin-top:14px}.approve{background:var(--green);flex:1}.reject{background:var(--red);flex:1}
+.message{margin-top:14px;min-height:24px;line-height:1.7;font-size:14px;overflow-wrap:anywhere}.details{margin-top:20px;padding:16px;border:1px solid var(--line);border-radius:12px;line-height:2}.actions{display:flex;gap:10px;margin-top:18px}.hidden{display:none!important}
+</style>
+</head>
+<body><main class="card">
+<h1>مراجعة طلب حساب جديد</h1>
+<p class="muted">أدخل كود الموافقة الذي وصلك على بريد الإدارة. الكود صالح لمدة 15 دقيقة ويُستخدم مرة واحدة.</p>
+<form id="codeForm"><label for="code">كود الموافقة (12 رقماً)</label><input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{12}" maxlength="12" minlength="12" required><button class="primary" id="lookupBtn">عرض الطلب</button></form>
+<section id="review" class="hidden"><div class="details"><div><b>الاسم:</b> <span id="fullName"></span></div><div><b>اسم المستخدم:</b> <span id="username"></span></div><div><b>البريد:</b> <span id="email"></span></div></div><p class="muted">الموافقة تنشئ الحساب فقط، ولا تمنح أي فرع أو صلاحيات إدارية. تُحدّد الصلاحيات والفروع لاحقاً يدوياً.</p><div class="actions"><button class="approve" id="approveBtn">موافقة وإنشاء الحساب</button><button class="reject" id="rejectBtn">رفض الطلب</button></div></section>
+<div id="message" class="message" role="status"></div>
+</main>
+<script>
+const API="https://opbzfgmzpngstgdoihrc.supabase.co/functions/v1/approve-account";
+const KEY="sb_publishable_LeuENOe_jPZ7Cli5W3Nuvw_4b1zzflB";
+const $=id=>document.getElementById(id);let currentCode="";let busy=false;
+async function send(action){
+ if(busy)return;busy=true;$("lookupBtn").disabled=true;$("approveBtn").disabled=true;$("rejectBtn").disabled=true;
+ $("message").textContent="جارٍ التحقق...";
+ try{
+  const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","apikey":KEY},body:JSON.stringify({token:currentCode,action})});
+  const data=await r.json();if(!r.ok||!data.ok)throw new Error(data.error||"تعذّر إكمال العملية.");
+  if(action==="lookup"){
+   $("fullName").textContent=data.request.full_name;$("username").textContent=data.request.username;$("email").textContent=data.request.email;
+   $("review").classList.remove("hidden");$("codeForm").classList.add("hidden");$("message").textContent="تم التحقق من الكود. راجع البيانات قبل اتخاذ القرار.";
+  }else{
+   $("review").classList.add("hidden");$("codeForm").classList.add("hidden");$("message").textContent=data.message;
+  }
+ }catch(e){$("message").textContent=e.message||"حدث خطأ. تحقق من الكود وحاول مجدداً."}
+ finally{busy=false;$("lookupBtn").disabled=false;$("approveBtn").disabled=false;$("rejectBtn").disabled=false}
+}
+$("codeForm").addEventListener("submit",e=>{e.preventDefault();currentCode=$("code").value.trim();if(!/^\d{12}$/.test(currentCode)){$("message").textContent="أدخل 12 رقماً بالضبط.";return}send("lookup")});
+$("approveBtn").addEventListener("click",()=>{if(confirm("هل تؤكد الموافقة وإنشاء الحساب؟"))send("approve")});
+$("rejectBtn").addEventListener("click",()=>{if(confirm("هل تؤكد رفض طلب الحساب؟"))send("reject")});
+</script></body></html>
