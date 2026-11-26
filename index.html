@@ -19,7 +19,7 @@ main{padding:24px;max-width:1500px;width:100%;margin:auto}.top{display:flex;just
 <h1>تسجيل الدخول</h1><p class="muted">استخدم اسم المستخدم وكلمة المرور.</p>
 <form id="loginForm"><label>اسم المستخدم</label><input id="username" autocomplete="username" required><label>كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required><button class="btn wide" id="loginBtn">دخول</button><div id="loginMsg" class="msg"></div></form>
 <button type="button" class="btn ghost wide" id="showRecoveryReq" onclick="document.getElementById('loginForm').classList.add('hidden');document.getElementById('showRecoveryReq').classList.add('hidden');document.getElementById('showReq').classList.add('hidden');document.getElementById('forgotForm').classList.remove('hidden')">نسيت كلمة المرور؟</button>
-<form id="forgotForm" class="hidden"><h3>استعادة كلمة المرور</h3><label>البريد الإلكتروني المسجّل</label><input id="forgotEmail" type="email" autocomplete="email" required><button type="button" class="btn wide" id="sendRecovery" onclick="this.textContent='تم الضغط — جارٍ الإرسال...';this.disabled=true;window.sendRecoveryNow()">إرسال رابط الاستعادة</button><div id="forgotMsg" class="msg"></div><button type="button" class="btn ghost wide" id="backFromForgot">رجوع</button></form>
+<form id="forgotForm" class="hidden"><h3>استعادة كلمة المرور</h3><label>البريد الإلكتروني المسجّل</label><input id="forgotEmail" type="email" autocomplete="email" required><button type="button" class="btn wide" id="sendRecovery" onclick="window.sendRecoveryNow()">إرسال رابط الاستعادة</button><div id="forgotMsg" class="msg"></div><button type="button" class="btn ghost wide" id="backFromForgot">رجوع</button></form>
 <button class="btn ghost wide" id="showReq">طلب إنشاء حساب</button>
 <form id="reqForm" class="hidden"><h3>طلب حساب جديد</h3><label>الاسم الكامل</label><input id="reqName" required><label>اسم المستخدم</label><input id="reqUser" required minlength="3"><label>البريد الإلكتروني</label><input id="reqEmail" type="email" required><button class="btn wide">إرسال الطلب</button><div id="reqMsg" class="msg"></div><button type="button" class="btn ghost wide" id="backLogin">رجوع</button></form>
 </div></section>
@@ -39,20 +39,27 @@ function can(k){return perms.has("*")||perms.has(k)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function msg(id,t,ok=false){const e=$(id);if(e){e.textContent=t;e.style.color=ok?"#58d6a6":"#ffbdad"}}
 window.sendRecoveryNow=async function(){
- const b=$("sendRecovery"),email=$("forgotEmail").value.trim(),out=$("forgotMsg");
- const resetButton=()=>{b.disabled=false;b.textContent="إرسال رابط الاستعادة"};
- out.textContent="جارٍ إرسال طلب الاستعادة...";
- out.style.color="#ffbdad";
- if(!email){out.textContent="اكتب البريد الإلكتروني أولاً.";resetButton();return}
- if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){out.textContent="صيغة البريد الإلكتروني غير صحيحة.";resetButton();return}
- b.disabled=true;
+ const b=document.getElementById("sendRecovery");
+ const input=document.getElementById("forgotEmail");
+ const out=document.getElementById("forgotMsg");
+ let timer=null;
  try{
-  const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:"https://testing--sniper-cell-pos.netlify.app/"});
-  if(error)throw error;
-  out.textContent="تم إرسال الطلب. إذا كان البريد مسجلاً، افحص الوارد والرسائل غير المرغوب فيها.";
-  out.style.color="#58d6a6";
- }catch(x){out.textContent="تعذّر إرسال الرابط: "+(x?.message||"خطأ غير معروف");out.style.color="#ffbdad"}
- finally{resetButton()}
+  if(!b||!input||!out)throw new Error("عناصر نموذج الاستعادة غير مكتملة؛ حدّث الصفحة وافتح النموذج مجدداً.");
+  const email=String(input.value||"").trim();
+  b.disabled=true;b.textContent="جارٍ إرسال الرابط...";
+  out.textContent="تم تشغيل طلب الاستعادة. جارٍ الاتصال بالخادم...";out.style.color="#ffbdad";
+  if(!email)throw new Error("اكتب البريد الإلكتروني أولاً.");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("صيغة البريد الإلكتروني غير صحيحة.");
+  if(typeof db==="undefined"||!db||!db.auth||typeof db.auth.resetPasswordForEmail!=="function")throw new Error("اتصال خدمة تسجيل الدخول غير جاهز. أعد تحميل الصفحة.");
+  const request=db.auth.resetPasswordForEmail(email,{redirectTo:"https://testing--sniper-cell-pos.netlify.app/"});
+  const result=await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("انتهت مهلة الاتصال بعد 20 ثانية. لم يصل رد من خادم تسجيل الدخول.")),20000)})]);
+  if(timer!==null)clearTimeout(timer);
+  if(result&&result.error)throw result.error;
+  out.textContent="تم إرسال طلب الاستعادة. إذا كان البريد مسجلاً، افحص الوارد والرسائل غير المرغوب فيها.";out.style.color="#58d6a6";
+ }catch(x){
+  if(timer!==null)clearTimeout(timer);
+  if(out){out.textContent="تعذّر إكمال الاستعادة: "+(x&&x.message?x.message:"خطأ غير معروف");out.style.color="#ffbdad";}
+ }finally{if(b){b.disabled=false;b.textContent="إرسال رابط الاستعادة"}}
 };
 
 async function call(fn,args){const {data,error}=await db.rpc(fn,args);if(error)throw error;return data}
