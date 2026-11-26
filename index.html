@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101827"><title>نظام نقاط البيع</title>
 <script>
-window.addEventListener("error",e=>{if(e.target&&e.target!==window)return;const n=document.getElementById("loginMsg");if(!n)return;if(e.message==="Script error."&&n.textContent.trim())return;n.textContent="خطأ برمجي: "+(e.message&&e.message!=="Script error."?e.message:"تعذّر تحميل أحد ملفات البرنامج. حدّث الصفحة، وإذا استمرّ الخطأ سنفحص اتصال المكتبة.");});window.addEventListener("unhandledrejection",e=>{const n=document.getElementById("loginMsg");if(n)n.textContent="خطأ أثناء تنفيذ الدخول: "+(e.reason?.message||String(e.reason||"خطأ غير معروف"));});
+window.addEventListener("error",e=>{if(e.target&&e.target!==window)return;const n=document.getElementById("loginMsg");if(!n)return;const detail=e.error?.message||e.message||"خطأ غير معروف";const source=e.filename?(" ("+e.filename.split("/").pop()+":"+e.lineno+")"):"";n.textContent="خطأ برمجي: "+detail+source;});window.addEventListener("unhandledrejection",e=>{const n=document.getElementById("loginMsg");if(n)n.textContent="خطأ أثناء تنفيذ الدخول: "+(e.reason?.message||String(e.reason||"خطأ غير معروف"));});
 /* Password recovery is deliberately independent of the Supabase JS CDN. */
 window.sendRecoveryNow = async function () {
   const button = document.getElementById("sendRecovery");
@@ -65,7 +65,7 @@ window.sendRecoveryNow = async function () {
   }
 };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.7/dist/umd/supabase.js" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2.110.7/dist/umd/supabase.js';"></script>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#142238;--panel2:#1b2d46;--line:#2b405d;--txt:#eef5ff;--muted:#9fb1c9;--blue:#438ee8;--green:#269b70;--red:#b84c58}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% -20%,#1a3d63 0,transparent 42%),var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
