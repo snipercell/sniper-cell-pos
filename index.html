@@ -19,7 +19,7 @@ window.sendRecoveryNow = async function () {
     output.textContent = "جارٍ الاتصال بخادم تسجيل الدخول...";
     output.style.color = "#ffbdad";
     if (!email) throw new Error("اكتب البريد الإلكتروني أولاً.");
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error("صيغة البريد الإلكتروني غير صحيحة.");
+    if (!email.includes("@") || !email.split("@")[1]?.includes(".") || email.startsWith("@") || email.endsWith(".")) throw new Error("صيغة البريد الإلكتروني غير صحيحة.");
     controller = new AbortController();
     const timeout = new Promise((_, reject) => {
       timeoutId = setTimeout(() => {
