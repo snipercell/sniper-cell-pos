@@ -214,7 +214,7 @@ async function purchasesPage(h){
  };
 }
 async function reportsPage(h){
- if(!can("reports.view")&&!can("sales.view"))throw Error("لا تملك صلاحية التقارير");
+ if(!can("reports.view"))throw Error("لا تملك صلاحية التقارير");
  if(!branchId)throw Error("اختار فرعاً أولاً");
  const [{data:s,error:se},{data:p,error:pe},{data:e,error:ee},{data:t,error:te},{data:c,error:ce}]=await Promise.all([
   db.from("sales").select("id,total_usd,total_lbp,status,created_at").eq("branch_id",branchId).eq("status","completed"),
@@ -245,5 +245,5 @@ async function reportsPage(h){
  '<div class="panel notice">هذا تقرير حركة تشغيلية وليس كشف أرباح نهائياً: قيمة المشتريات قد تبقى ضمن المخزون، ولا تُحسب كلفة البضاعة المباعة أو الربح الصافي إلا بعد ربط تكلفة كل قطعة بالمبيعات.</div>';
 }
 async function settingsPage(h){if(!can("settings.manage"))throw Error("لا تملك صلاحية الإعدادات");const {data:r,error}=await db.from("branch_fx_rates").select("*").eq("branch_id",branchId).maybeSingle();if(error)throw error;h.innerHTML='<div class="panel"><h2>سعر الصرف للفرع الحالي</h2><label>عدد الليرات لكل دولار</label><input id="fxRate" type="number" min="1" step="1" value="'+(r?.lbp_per_usd||"")+'"><button class="btn" id="saveFx">حفظ سعر الصرف</button><div id="fxMsg" class="msg"></div></div>';$("saveFx").onclick=async()=>{try{const {error}=await db.from("branch_fx_rates").upsert({branch_id:branchId,lbp_per_usd:Number($("fxRate").value),updated_by:user.id});if(error)throw error;msg("fxMsg","تم حفظ سعر الصرف",true)}catch(e){msg("fxMsg",e.message)}}}
-const recoveryRequested=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery"||new URLSearchParams(location.search).get("type")==="recovery";db.auth.onAuthStateChange((event,session)=>{if(event==="PASSWORD_RECOVERY"||(recoveryRequested&&session)){showRecovery(session)}});db.auth.getSession().then(async({data,error})=>{if(recoveryRequested){showRecovery(data?.session||null);if(!data?.session)msg("recoveryMsg","تعذّر تأكيد رابط الاستعادة. اطلب رابطاً جديداً وافتح أحدث رسالة.");return}if(data.session?.user){try{await loadContext(data.session.user)}catch(e){await db.auth.signOut();$("loginMsg").textContent=e.message}}});
+const recoveryRequested=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery"||new URLSearchParams(location.search).get("type")==="recovery";db.auth.getSession().then(async({data,error})=>{if(recoveryRequested){showRecovery(data?.session||null);if(!data?.session)msg("recoveryMsg","تعذّر تأكيد رابط الاستعادة. اطلب رابطاً جديداً وافتح أحدث رسالة.");return}if(data.session?.user){try{await loadContext(data.session.user)}catch(e){await db.auth.signOut();$("loginMsg").textContent=e.message}}});
 </script></body></html>
