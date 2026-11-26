@@ -104,14 +104,40 @@ async function topupsPage(h){if(!can("topups.view")&&!can("topups.create"))throw
  if($("saveTopup"))$("saveTopup").onclick=async()=>{try{const {error}=await db.from("topups").insert({branch_id:branchId,provider:$("tProvider").value,duration:$("tDuration").value,card_amount_usd:Number($("tAmount").value),cost_usd:Number($("tCost").value),created_by:user.id});if(error)throw error;msg("tMsg","تم حفظ العملية",true);await topupsPage(h)}catch(e){msg("tMsg",e.message)}}}
 async function purchasesPage(h){
  if(!can("purchases.view")&&!can("purchases.create"))throw Error("لا تملك صلاحية المشتريات");
+ if(!branchId)throw Error("اختار فرعاً أولاً");
  const [{data:prods,error:pe},{data:history,error:he}]=await Promise.all([
- db.from("products").select("id,name,purchase_price_usd").eq("active",true).order("name"),
- db.from("purchases").select("id,invoice_no,total_usd,created_at,supplier:suppliers(name)").eq("branch_id",branchId).order("created_at",{ascending:false}).limit(50)
+  db.from("products").select("id,name,purchase_price_usd").eq("active",true).order("name"),
+  db.from("purchases").select("id,invoice_no,total_usd,created_at,supplier:suppliers(name)").eq("branch_id",branchId).order("created_at",{ascending:false}).limit(50)
  ]);
  if(pe)throw pe;if(he)throw he;
- h.innerHTML=(can("purchases.create")?'<div class="panel"><h2>إدخال فاتورة مشتريات</h2><div class="formgrid"><div><label>اسم المورد</label><input id="buySupplier"></div><div><label>رقم الفاتورة</label><input id="buyInvoice"></div><div><label>الصنف</label><select id="buyProduct">'+prods.map(x=>'<option value="'+x.id+'" data-name="'+esc(x.name)+'" data-cost="'+x.purchase_price_usd+'">'+esc(x.name)+'</option>').join("")+'</select></div><div><label>الكمية</label><input id="buyQty" type="number" min=".01" step=".01" value="1"></div><div><label>كلفة الوحدة $</label><input id="buyCost" type="number" min="0" step=".01" value="0"></div><div><label>سعر الصرف</label><input id="buyRate" type="number" min="1" step="1"></div></div><div class="actions"><button class="btn ghost" id="buyAdd">إضافة الصنف</button></div><div id="buyCart"></div><button class="btn green" id="buySave">حفظ الفاتورة وزيادة المخزون</button><div id="buyMsg" class="msg"></div></div>':'')+'<div class="panel"><h2>سجل المشتريات</h2><div class="tablewrap"><table><thead><tr><th>الفاتورة</th><th>المورد</th><th>الإجمالي $</th><th>التاريخ</th></tr></thead><tbody>'+history.map(x=>'<tr><td>'+esc(x.invoice_no)+'</td><td>'+esc(x.supplier?.name||'—')+'</td><td>'+Number(x.total_usd).toFixed(2)+'</td><td>'+new Date(x.created_at).toLocaleString("ar-LB")+'</td></tr>').join("")+'</tbody></table></div></div>';
- if(!$("buyAdd"))return;let cart=[];
- const redraw=()=>{$("buyCart").innerHTML='<p>عدد الأصناف: '+cart.length+' — الإجمالي: 
+ h.innerHTML=(can("purchases.create")?'<div class="panel"><h2>إدخال فاتورة مشتريات</h2><div class="formgrid"><div><label>اسم المورد</label><input id="buySupplier"></div><div><label>رقم الفاتورة</label><input id="buyInvoice"></div><div><label>الصنف</label><select id="buyProduct">'+prods.map(x=>'<option value="'+x.id+'" data-name="'+esc(x.name)+'" data-cost="'+x.purchase_price_usd+'">'+esc(x.name)+'</option>').join("")+'</select></div><div><label>الكمية</label><input id="buyQty" type="number" min=".01" step=".01" value="1"></div><div><label>كلفة الوحدة $</label><input id="buyCost" type="number" min="0" step=".01" value="0"></div><div><label>سعر الصرف LBP لكل $</label><input id="buyRate" type="number" min="1" step="1"></div></div><div class="actions"><button class="btn ghost" id="buyAdd" type="button">إضافة الصنف</button></div><div id="buyCart"></div><button class="btn green" id="buySave" type="button">حفظ الفاتورة وزيادة المخزون</button><div id="buyMsg" class="msg"></div></div>':'')+'<div class="panel"><h2>سجل المشتريات</h2><div class="tablewrap"><table><thead><tr><th>الفاتورة</th><th>المورد</th><th>الإجمالي $</th><th>التاريخ</th></tr></thead><tbody>'+history.map(x=>'<tr><td>'+esc(x.invoice_no||"—")+'</td><td>'+esc(x.supplier?.name||"—")+'</td><td>'+Number(x.total_usd).toFixed(2)+'</td><td>'+new Date(x.created_at).toLocaleString("ar-LB")+'</td></tr>').join("")+'</tbody></table></div></div>';
+ if(!$("buyAdd"))return;
+ let cart=[];
+ const redraw=()=>{
+  const total=cart.reduce((sum,x)=>sum+x.quantity*x.unit_cost_usd,0);
+  $("buyCart").innerHTML='<p>عدد الأصناف: '+cart.length+' — الإجمالي: $'+total.toFixed(2)+'</p>'+cart.map((x,i)=>'<div class="notice" style="margin:6px 0;display:flex;justify-content:space-between;gap:10px"><span>'+esc(x.name)+' × '+x.quantity+' — $'+(x.quantity*x.unit_cost_usd).toFixed(2)+'</span><button class="btn red" type="button" data-remove-buy="'+i+'">حذف</button></div>').join("");
+  $("buyCart").querySelectorAll("[data-remove-buy]").forEach(b=>b.onclick=()=>{cart.splice(Number(b.dataset.removeBuy),1);redraw()});
+ };
+ $("buyProduct").onchange=()=>{$("buyCost").value=$("buyProduct").selectedOptions[0]?.dataset.cost||0};
+ $("buyProduct").dispatchEvent(new Event("change"));
+ $("buyAdd").onclick=()=>{
+  const opt=$("buyProduct").selectedOptions[0],quantity=Number($("buyQty").value),cost=Number($("buyCost").value);
+  if(!opt){msg("buyMsg","أضف المنتجات أولاً");return}
+  if(!Number.isFinite(quantity)||quantity<=0||!Number.isFinite(cost)||cost<0){msg("buyMsg","تحقّق من الكمية والكلفة");return}
+  cart.push({product_id:opt.value,name:opt.dataset.name,quantity,unit_cost_usd:cost});
+  redraw();msg("buyMsg","تمت إضافة الصنف",true);
+ };
+ $("buySave").onclick=async()=>{
+  const b=$("buySave");b.disabled=true;
+  try{
+   if(!cart.length)throw Error("أضف صنفاً واحداً على الأقل");
+   const rate=Number($("buyRate").value);if(!Number.isFinite(rate)||rate<=0)throw Error("أدخل سعر صرف صحيح");
+   const result=await call("create_pos_purchase",{p_branch_id:branchId,p_supplier_name:$("buySupplier").value.trim(),p_invoice_no:$("buyInvoice").value.trim(),p_items:cart.map(({product_id,quantity,unit_cost_usd})=>({product_id,quantity,unit_cost_usd})),p_exchange_rate:rate});
+   msg("buyMsg","تم حفظ الفاتورة وزيادة المخزون. الإجمالي $"+Number(result.total_usd).toFixed(2),true);
+   await purchasesPage(h);
+  }catch(e){msg("buyMsg",e.message)}finally{b.disabled=false}
+ };
+}
 async function reportsPage(h){if(!can("reports.view")&&!can("sales.view"))throw Error("لا تملك صلاحية التقارير");const [{data:s,error:se},{data:e,error:ee},{data:top,error:te}]=await Promise.all([db.from("sales").select("total_usd,created_at").eq("branch_id",branchId),db.from("expenses").select("amount,currency,status").eq("branch_id",branchId),db.from("topups").select("card_amount_usd,cost_usd").eq("branch_id",branchId)]);if(se)throw se;if(ee)throw ee;if(te)throw te;const total=(s||[]).reduce((a,x)=>a+Number(x.total_usd),0),approved=(e||[]).filter(x=>x.status==="approved");h.innerHTML='<div class="grid"><div class="panel"><div class="muted">عدد فواتير البيع</div><h2>'+s.length+'</h2></div><div class="panel"><div class="muted">إجمالي المبيعات $</div><h2>'+total.toFixed(2)+'</h2></div><div class="panel"><div class="muted">المصاريف المعتمدة</div><h2>'+approved.length+'</h2></div><div class="panel"><div class="muted">عمليات التعبئة</div><h2>'+top.length+'</h2></div></div><div class="panel notice">التقارير الحالية ملخص أولي؛ الأرباح التفصيلية وحركة الصندوق والجرد تحتاج إكمال واجهة المشتريات والتكاليف.</div>'}
 async function settingsPage(h){if(!can("settings.manage"))throw Error("لا تملك صلاحية الإعدادات");const {data:r,error}=await db.from("branch_fx_rates").select("*").eq("branch_id",branchId).maybeSingle();if(error)throw error;h.innerHTML='<div class="panel"><h2>سعر الصرف للفرع الحالي</h2><label>عدد الليرات لكل دولار</label><input id="fxRate" type="number" min="1" step="1" value="'+(r?.lbp_per_usd||"")+'"><button class="btn" id="saveFx">حفظ سعر الصرف</button><div id="fxMsg" class="msg"></div></div>';$("saveFx").onclick=async()=>{try{const {error}=await db.from("branch_fx_rates").upsert({branch_id:branchId,lbp_per_usd:Number($("fxRate").value),updated_by:user.id});if(error)throw error;msg("fxMsg","تم حفظ سعر الصرف",true)}catch(e){msg("fxMsg",e.message)}}}
 const recoveryRequested=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery"||new URLSearchParams(location.search).get("type")==="recovery";db.auth.onAuthStateChange((event,session)=>{if(event==="PASSWORD_RECOVERY"||(recoveryRequested&&session)){showRecovery(session)}});db.auth.getSession().then(async({data,error})=>{if(recoveryRequested){showRecovery(data?.session||null);if(!data?.session)msg("recoveryMsg","تعذّر تأكيد رابط الاستعادة. اطلب رابطاً جديداً وافتح أحدث رسالة.");return}if(data.session?.user){try{await loadContext(data.session.user)}catch(e){await db.auth.signOut();$("loginMsg").textContent=e.message}}});
