@@ -200,7 +200,7 @@ syncNavigation();
 async function renderPage(p){if(!pageAllowed(p)){p="home";}page=p;syncNavigation();document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.page===p));const names={home:"الرئيسية",sales:"المبيعات",products:"المنتجات والمخزون",purchases:"المشتريات",expenses:"المصاريف",cash:"الصندوق",maintenance:"الصيانة",topups:"التعبئة",reports:"التقارير",admin:"الفروع والمستخدمون",settings:"الإعدادات"};$("pageTitle").textContent=names[p];const host=$("pageContent");host.innerHTML='<div class="panel">جارٍ تحميل البيانات...</div>';
  try{if(p==="home")await home(host);else if(p==="admin")await admin(host);else if(p==="products")await productPage(host);else if(p==="sales")await salesPage(host);else if(p==="expenses")await expensesPage(host);else if(p==="cash")await cashPage(host);else if(p==="maintenance")await maintenancePage(host);else if(p==="topups")await topupsPage(host);else if(p==="purchases")await purchasesPage(host);else if(p==="reports")await reportsPage(host);else if(p==="settings")await settingsPage(host)}catch(e){host.innerHTML='<div class="panel notice">'+esc(e.message)+'</div>'}}
 async function scanBarcode(onDetected,messageId){
- let overlay=null,reader=null,active=true,video=null,stream=null,scanTimer=null,detector=null;
+ let overlay=null,reader=null,active=true,video=null,stream=null,scanTimer=null,detector=null,scanning=false;
  const stop=()=>{active=false;if(scanTimer)clearTimeout(scanTimer);if(stream)stream.getTracks().forEach(t=>t.stop());try{reader?.reset?.()}catch(e){}if(overlay)overlay.remove()};
  const found=value=>{if(!active||!value)return;const clean=String(value).trim();if(!clean)return;stop();onDetected(clean)};
  const status=text=>{const n=overlay?.querySelector("[data-scan-status]");if(n)n.textContent=text};
@@ -211,48 +211,58 @@ async function scanBarcode(onDetected,messageId){
   return null;
  };
  try{
-  if(!navigator.mediaDevices?.getUserMedia)throw Error("افتح البرنامج من رابط HTTPS واسمح للمتصفح باستخدام الكاميرا.");
   overlay=document.createElement("div");overlay.style.cssText="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.97);display:grid;place-items:center;padding:12px;overflow:auto";
   const card=document.createElement("div");card.style.cssText="width:min(100%,560px);background:#142238;border:1px solid #49617f;border-radius:18px;padding:14px;color:white;text-align:center";
   const title=document.createElement("div");title.textContent="وجّه الكاميرا الخلفية نحو الباركود";title.style.cssText="font-weight:700;margin:4px 0 10px";
-  video=document.createElement("video");video.autoplay=true;video.playsInline=true;video.muted=true;video.setAttribute("playsinline","");video.style.cssText="width:100%;max-height:55vh;object-fit:contain;border-radius:12px;background:#000";
-  const hint=document.createElement("div");hint.dataset.scanStatus="";hint.textContent="جارٍ تشغيل الكاميرا وتجهيز قارئ الباركود...";hint.style.cssText="font-size:13px;line-height:1.7;opacity:.9;margin:9px 0";
+  video=document.createElement("video");video.autoplay=true;video.playsInline=true;video.muted=true;video.setAttribute("playsinline","");video.setAttribute("webkit-playsinline","");video.style.cssText="display:block;width:100%;height:auto;max-height:48vh;object-fit:contain;border-radius:12px;background:#000";
+  const hint=document.createElement("div");hint.dataset.scanStatus="";hint.textContent="جارٍ طلب تشغيل الكاميرا...";hint.style.cssText="font-size:13px;line-height:1.7;opacity:.9;margin:9px 0";
   const photoLabel=document.createElement("label");photoLabel.textContent="📷 تصوير الباركود أو اختيار صورة";photoLabel.style.cssText="display:block;margin:10px auto;padding:11px 14px;border-radius:10px;background:#245f9f;color:white;cursor:pointer;font-weight:700";
-  const photo=document.createElement("input");photo.type="file";photo.accept="image/*";photo.setAttribute("capture","environment");photo.style.cssText="position:absolute;width:1px;height:1px;opacity:0";photoLabel.append(photo);
-  const close=document.createElement("button");close.type="button";close.textContent="إغلاق الكاميرا";close.style.cssText="margin-top:8px;padding:11px 18px;border:0;border-radius:10px;background:#43536a;color:white;font:inherit";close.onclick=stop;
+  const photo=document.createElement("input");photo.type="file";photo.accept="image/*";photo.setAttribute("capture","environment");photo.style.cssText="display:block;width:100%;margin-top:8px;color:white;font-size:12px";photoLabel.append(photo);
+  const close=document.createElement("button");close.type="button";close.textContent="إغلاق";close.style.cssText="margin-top:8px;padding:11px 18px;border:0;border-radius:10px;background:#43536a;color:white;font:inherit";close.onclick=stop;
   card.append(title,video,hint,photoLabel,close);overlay.append(card);document.body.append(overlay);
+  photo.onchange=async()=>{
+   const file=photo.files?.[0];if(!file)return;
+   status("عم نفحص الصورة...");
+   let objectUrl=null;
+   try{
+    const image=document.createElement("img");objectUrl=URL.createObjectURL(file);
+    await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(Error("تعذّر فتح الصورة"));image.src=objectUrl});
+    let value="";
+    if(detector){try{const results=await detector.detect(image);value=results?.[0]?.rawValue||""}catch(e){}}
+    if(!value&&reader){try{const result=await reader.decodeFromImageElement(image);value=result?.getText?.()||""}catch(e){}}
+    if(value)found(value);else status("ما انقرأ الباركود. صوّره عن قرب وبإضاءة قوية، وخلي الخطوط كاملة وواضحة.");
+   }catch(e){status("تعذّر فتح الصورة. جرّب صورة بصيغة JPG أو PNG.")}
+   finally{if(objectUrl)URL.revokeObjectURL(objectUrl);photo.value=""}
+  };
+  if(!navigator.mediaDevices?.getUserMedia){status("المتصفح لا يتيح الكاميرا. فيك تستخدم خيار الصورة أعلاه.");return}
+  /* Request the camera directly from the button flow before loading any external library. */
+  try{
+   stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}}});
+   if(!active)return;
+   video.srcObject=stream;
+   await new Promise(resolve=>{if(video.readyState>=1)return resolve();video.onloadedmetadata=resolve;setTimeout(resolve,2500)});
+   await video.play();
+   status("الكاميرا شغّالة. ثبّت الباركود أمام العدسة...");
+  }catch(e){status("ما اشتغلت الكاميرا: "+(e?.message||"تحقّق من صلاحية الكاميرا. فيك تستخدم التصوير أعلاه."));return}
   const ZX=await loadZXing();
   if(!active)return;
   if(ZX?.BrowserMultiFormatReader)reader=new ZX.BrowserMultiFormatReader();
   if("BarcodeDetector" in window){try{const supported=await BarcodeDetector.getSupportedFormats();const formats=["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","qr_code"].filter(x=>supported.includes(x));if(formats.length)detector=new BarcodeDetector({formats})}catch(e){}}
-  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}});
-  if(!active)return;
-  video.srcObject=stream;await video.play();
-  status("ثبّت الهاتف وخلي الباركود واضحاً. عم نفحص الصورة باستمرار...");
+  if(!reader&&!detector){status("تعذّر تحميل قارئ الباركود. استخدم زر التصوير أعلاه أو أدخل الرقم يدوياً.");return}
   const scan=async()=>{
-   if(!active)return;
-   if(video.readyState>=2){
-    if(detector){try{const results=await detector.detect(video);if(results?.length&&results[0].rawValue){found(results[0].rawValue);return}}catch(e){}}
-    if(reader&&active){try{const result=reader.decodeFromVideoElement(video);if(result?.getText){found(result.getText());return}}catch(e){}}
-   }
-   if(active)scanTimer=setTimeout(scan,180);
+   if(!active||scanning)return;
+   if(video.readyState<2||!video.videoWidth){scanTimer=setTimeout(scan,300);return}
+   scanning=true;
+   try{
+    let value="";
+    if(detector){try{const results=await detector.detect(video);value=results?.[0]?.rawValue||""}catch(e){}}
+    if(!value&&reader){try{const result=await reader.decodeFromVideoElement(video);value=result?.getText?.()||""}catch(e){}}
+    if(value){found(value);return}
+   }finally{scanning=false}
+   if(active)scanTimer=setTimeout(scan,250);
   };
   scan();
-  photo.onchange=async()=>{
-   const file=photo.files?.[0];if(!file)return;
-   status("عم نفحص الصورة...");
-   try{
-    const image=document.createElement("img");const objectUrl=URL.createObjectURL(file);
-    await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=objectUrl});
-    let value="";
-    if(detector){try{const results=await detector.detect(image);value=results?.[0]?.rawValue||""}catch(e){}}
-    if(!value&&reader){try{const result=reader.decodeFromImageElement(image);value=result?.getText?.()||""}catch(e){}}
-    URL.revokeObjectURL(objectUrl);
-    if(value)found(value);else status("ما قدرنا نقرأ الصورة. جرّب صورة أوضح، قريبة، ومن دون انعكاس ضوئي.");
-   }catch(e){status("تعذّر فتح الصورة. جرّب تصوير الباركود مرة ثانية.")}
-   photo.value="";
-  };
- }catch(e){stop();msg(messageId,"تعذّر تشغيل قارئ الباركود: "+(e?.message||"تحقّق من صلاحية الكاميرا واتصال الإنترنت."))}
+ }catch(e){if(active)status("تعذّر تشغيل القارئ: "+(e?.message||"جرّب خيار التصوير."))}
 }
 function branchSelect(){return '<select id="branchPick">'+branches.map(b=>'<option value="'+b.id+'" '+(b.id===branchId?'selected':'')+'>'+esc(b.name)+'</option>').join("")+'</select>'}
 async function home(h){const currentBranch=branches.find(b=>b.id===branchId);const notice=currentBranch?'الفرع الحالي: '+esc(currentBranch.name)+' — يمكنك البدء بإضافة المنتجات والمخزون.':'ابدأ بإنشاء فرع، ثم أضف المنتجات والمخزون. لا توجد أسماء أو فروع جاهزة مسبقاً.';h.innerHTML='<div class="panel"><div class="sectionhead"><h2>مرحباً '+esc(profile.full_name||profile.username)+'</h2><span class="tag">بيئة Testing</span></div><p class="muted">'+(currentBranch?'تم تحديد الفرع ويمكنك العمل عليه.':'اختر الفرع للعمل عليه. الأقسام تظهر حسب الصلاحيات الممنوحة لحسابك.')+'</p><label>الفرع الحالي</label>'+branchSelect()+'</div><div class="grid"><div class="panel"><h3>حالة الحساب</h3><p>الدور: '+esc(profile.role)+'</p><p>الفروع المتاحة: '+branches.length+'</p><p>الصلاحيات: '+(perms.has("*")?"كاملة":perms.size)+'</p></div><div class="panel"><h3>تنبيه</h3><p class="muted">'+notice+'</p></div></div>';
