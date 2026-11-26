@@ -65,12 +65,7 @@ window.sendRecoveryNow = async function () {
   }
 };
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-if(!window.supabase){
-  document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\\/script>');
-}
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2';"></script>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#142238;--panel2:#1b2d46;--line:#2b405d;--txt:#eef5ff;--muted:#9fb1c9;--blue:#438ee8;--green:#269b70;--red:#b84c58}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% -20%,#1a3d63 0,transparent 42%),var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer}
