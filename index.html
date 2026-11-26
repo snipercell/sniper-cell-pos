@@ -26,7 +26,7 @@ main{padding:24px;max-width:1500px;width:100%;margin:auto}.top{display:flex;just
 <div id="appView" class="layout hidden">
 <aside class="side"><div class="brand"><div class="mark">SC</div><div><b>SNIPER CELL</b><div class="muted" style="font-size:11px">POS TESTING</div></div></div>
 <button class="nav active" data-page="home">⌂ الرئيسية</button><button class="nav" data-page="sales">🛒 المبيعات</button><button class="nav" data-page="products">📦 المنتجات والمخزون</button><button class="nav" data-page="purchases">🧾 المشتريات</button><button class="nav" data-page="expenses">💵 المصاريف</button><button class="nav" data-page="maintenance">🔧 الصيانة</button><button class="nav" data-page="topups">📱 التعبئة</button><button class="nav" data-page="reports">📊 التقارير</button><button class="nav" data-page="admin">👥 الفروع والمستخدمون</button><button class="nav" data-page="settings">⚙️ الإعدادات</button><div class="sidefoot">نسخة تجريبية — كل التغييرات على Testing فقط.</div></aside>
-<main><div class="top"><div><div class="muted" style="font-size:12px">مساحة العمل</div><div class="title" id="pageTitle">الرئيسية</div></div><div class="topright"><span id="who" class="tag"></span><button class="btn ghost" id="logout">خروج</button></div></div>
+<main><div class="top"><div><div class="muted" style="font-size:12px">مساحة العمل</div><div class="title" id="pageTitle">الرئيسية</div></div><div class="topright"><span id="who" class="tag"></span><span id="branchSlot"></span><button class="btn ghost" id="logout">خروج</button></div></div>
 <div id="pageContent"></div></main></div>
 <script>
 const URL="https://opbzfgmzpngstgdoihrc.supabase.co", KEY="sb_publishable_LeuENOe_jPZ7Cli5W3Nuvw_4b1zzflB";
@@ -50,6 +50,8 @@ async function loadContext(u){
  branches=perms.has("*")||perms.has("branches.manage")?(allb||[]):(allb||[]).filter(b=>ids.has(b.id));
  branchId=branches[0]?.id||null;
  $("who").textContent=(p.full_name||p.username)+" · "+(p.role||"employee");
+ $("branchSlot").innerHTML=branches.length>1?'<select id="topBranchPick" aria-label="الفرع الحالي" style="width:auto;max-width:190px;padding:8px">'+branches.map(b=>'<option value="'+b.id+'" '+(b.id===branchId?'selected':'')+'>'+esc(b.name)+'</option>').join("")+'</select>':"";
+ if($("topBranchPick"))$("topBranchPick").onchange=e=>{branchId=e.target.value;renderPage(page||"home")};
  $("loginView").classList.add("hidden");$("appView").classList.remove("hidden");
  if(branchId){await renderPage("home")}else{await renderPage("admin")}
 }
