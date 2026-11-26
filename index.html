@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101827"><title>نظام نقاط البيع</title>
 <script>
-window.addEventListener("error",e=>{const n=document.getElementById("loginMsg");if(n)n.textContent="خطأ برمجي: "+(e.message||"تعذّر تشغيل صفحة الدخول");});window.addEventListener("unhandledrejection",e=>{const n=document.getElementById("loginMsg");if(n)n.textContent="خطأ أثناء تنفيذ الدخول: "+(e.reason?.message||String(e.reason||"خطأ غير معروف"));});
+window.addEventListener("error",e=>{if(e.target&&e.target!==window)return;const n=document.getElementById("loginMsg");if(!n)return;if(e.message==="Script error."&&n.textContent.trim())return;n.textContent="خطأ برمجي: "+(e.message&&e.message!=="Script error."?e.message:"تعذّر تحميل أحد ملفات البرنامج. حدّث الصفحة، وإذا استمرّ الخطأ سنفحص اتصال المكتبة.");});window.addEventListener("unhandledrejection",e=>{const n=document.getElementById("loginMsg");if(n)n.textContent="خطأ أثناء تنفيذ الدخول: "+(e.reason?.message||String(e.reason||"خطأ غير معروف"));});
 /* Password recovery is deliberately independent of the Supabase JS CDN. */
 window.sendRecoveryNow = async function () {
   const button = document.getElementById("sendRecovery");
