@@ -3,6 +3,63 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101827"><title>SNIPER CELL POS</title>
+<script>
+/* Password recovery is deliberately independent of the Supabase JS CDN. */
+window.sendRecoveryNow = async function () {
+  const button = document.getElementById("sendRecovery");
+  const emailInput = document.getElementById("forgotEmail");
+  const output = document.getElementById("forgotMsg");
+  let timeoutId = null;
+  let controller = null;
+  try {
+    if (!button || !emailInput || !output) throw new Error("نموذج الاستعادة غير جاهز. أعد فتح الصفحة.");
+    const email = String(emailInput.value || "").trim();
+    button.disabled = true;
+    button.textContent = "جارٍ إرسال الرابط...";
+    output.textContent = "جارٍ الاتصال بخادم تسجيل الدخول...";
+    output.style.color = "#ffbdad";
+    if (!email) throw new Error("اكتب البريد الإلكتروني أولاً.");
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error("صيغة البريد الإلكتروني غير صحيحة.");
+    controller = new AbortController();
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        controller.abort();
+        reject(new Error("انتهت مهلة الاتصال بعد 20 ثانية. تحقق من اتصال الإنترنت."));
+      }, 20000);
+    });
+    const request = fetch("https://opbzfgmzpngstgdoihrc.supabase.co/auth/v1/recover?redirect_to=" + encodeURIComponent("https://testing--sniper-cell-pos.netlify.app/"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": "sb_publishable_LeuENOe_jPZ7Cli5W3Nuvw_4b1zzflB"
+      },
+      body: JSON.stringify({ email }),
+      signal: controller.signal,
+      cache: "no-store"
+    });
+    const response = await Promise.race([request, timeout]);
+    if (timeoutId !== null) clearTimeout(timeoutId);
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error("خادم تسجيل الدخول ردّ برمز " + response.status + (detail ? ": " + detail.slice(0, 220) : ""));
+    }
+    output.textContent = "وصل طلب الاستعادة إلى خادم تسجيل الدخول. افحص بريدك الوارد والرسائل غير المرغوب فيها.";
+    output.style.color = "#58d6a6";
+  } catch (error) {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+    if (output) {
+      const message = error && error.name === "AbortError" ? "انتهت مهلة الاتصال. تحقق من الإنترنت وحاول لاحقاً." : (error && error.message ? error.message : "تعذّر الاتصال بخادم تسجيل الدخول.");
+      output.textContent = "تعذّر إرسال الرابط: " + message;
+      output.style.color = "#ffbdad";
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = "إرسال رابط الاستعادة";
+    }
+  }
+};
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#142238;--panel2:#1b2d46;--line:#2b405d;--txt:#eef5ff;--muted:#9fb1c9;--blue:#438ee8;--green:#269b70;--red:#b84c58}
@@ -38,30 +95,6 @@ const permissionList=[
 function can(k){return perms.has("*")||perms.has(k)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function msg(id,t,ok=false){const e=$(id);if(e){e.textContent=t;e.style.color=ok?"#58d6a6":"#ffbdad"}}
-window.sendRecoveryNow=async function(){
- const b=document.getElementById("sendRecovery");
- const input=document.getElementById("forgotEmail");
- const out=document.getElementById("forgotMsg");
- let timer=null;
- try{
-  if(!b||!input||!out)throw new Error("عناصر نموذج الاستعادة غير مكتملة؛ حدّث الصفحة وافتح النموذج مجدداً.");
-  const email=String(input.value||"").trim();
-  b.disabled=true;b.textContent="جارٍ إرسال الرابط...";
-  out.textContent="تم تشغيل طلب الاستعادة. جارٍ الاتصال بالخادم...";out.style.color="#ffbdad";
-  if(!email)throw new Error("اكتب البريد الإلكتروني أولاً.");
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error("صيغة البريد الإلكتروني غير صحيحة.");
-  if(typeof db==="undefined"||!db||!db.auth||typeof db.auth.resetPasswordForEmail!=="function")throw new Error("اتصال خدمة تسجيل الدخول غير جاهز. أعد تحميل الصفحة.");
-  const request=db.auth.resetPasswordForEmail(email,{redirectTo:"https://testing--sniper-cell-pos.netlify.app/"});
-  const result=await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("انتهت مهلة الاتصال بعد 20 ثانية. لم يصل رد من خادم تسجيل الدخول.")),20000)})]);
-  if(timer!==null)clearTimeout(timer);
-  if(result&&result.error)throw result.error;
-  out.textContent="تم إرسال طلب الاستعادة. إذا كان البريد مسجلاً، افحص الوارد والرسائل غير المرغوب فيها.";out.style.color="#58d6a6";
- }catch(x){
-  if(timer!==null)clearTimeout(timer);
-  if(out){out.textContent="تعذّر إكمال الاستعادة: "+(x&&x.message?x.message:"خطأ غير معروف");out.style.color="#ffbdad";}
- }finally{if(b){b.disabled=false;b.textContent="إرسال رابط الاستعادة"}}
-};
-
 async function call(fn,args){const {data,error}=await db.rpc(fn,args);if(error)throw error;return data}
 async function loadContext(u){
  user=u;const {data:p,error}=await db.from("profiles").select("*").eq("id",u.id).single();if(error)throw error;if(!p?.active)throw Error("الحساب غير مفعّل");profile=p;
