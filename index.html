@@ -216,8 +216,8 @@ async function scanBarcode(onDetected,messageId){
   const close=document.createElement("button");close.type="button";close.textContent="إغلاق";close.style.cssText="margin-top:8px;padding:11px 18px;border:0;border-radius:10px;background:#43536a;color:white;font:inherit";close.onclick=stop;
   card.append(title,video,hint,photoLabel,close);overlay.append(card);document.body.append(overlay);
   /* BrowserMultiFormatReader belongs to @zxing/browser, not @zxing/library. Load both globals. */
-  if(!window.ZXing?.BarcodeFormat)await loadScript("https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js");
-  if(!window.ZXingBrowser?.BrowserMultiFormatReader)await loadScript("https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js");
+  if(!window.ZXing?.BarcodeFormat)await loadScript("https://cdn.jsdelivr.net/npm/@zxing/library@0.23.0/umd/index.min.js");
+  if(!window.ZXingBrowser?.BrowserMultiFormatReader)await loadScript("https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js");
   if(!active)return;
   const BrowserReader=window.ZXingBrowser?.BrowserMultiFormatReader;
   if(!BrowserReader){status("ما قدرنا نحمّل مكتبة قراءة الباركود. تأكّد من الإنترنت وحدّث الصفحة.");return}
