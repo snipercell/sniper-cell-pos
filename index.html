@@ -259,6 +259,8 @@ async function salesPage(h){
  };
  $("sProduct").onchange=()=>{$("sPrice").value=$("sProduct").selectedOptions[0]?.dataset.price||0;$("sSerial").required=["imei","serial"].includes($("sProduct").selectedOptions[0]?.dataset.track||"")};
  $("sProduct").dispatchEvent(new Event("change"));
+ $("sBarcode").onchange=()=>{const code=$("sBarcode").value.trim();const match=[...$("sProduct").options].find(o=>o.dataset.barcode&&o.dataset.barcode.toLowerCase()===code.toLowerCase());if(!match)return msg("sMsg","لم يتم العثور على منتج بهذا الباركود في الفرع الحالي");$("sProduct").value=match.value;$("sProduct").dispatchEvent(new Event("change"));msg("sMsg","تم اختيار المنتج بالباركود",true)};
+ $("scanSaleBarcode").onclick=()=>scanBarcode(code=>{$("sBarcode").value=code;$("sBarcode").dispatchEvent(new Event("change"))},"sMsg");
  $("addItem").onclick=()=>{
   const o=$("sProduct").selectedOptions[0];if(!o)return;
   const quantity=Number($("sQty").value),price=Number($("sPrice").value),track=o.dataset.track,serial=$("sSerial").value.trim();
