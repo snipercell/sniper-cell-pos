@@ -294,11 +294,11 @@ async function purchasesPage(h){
  if(!can("purchases.view")&&!can("purchases.create"))throw Error("لا تملك صلاحية المشتريات");
  if(!branchId)throw Error("اختار فرعاً أولاً");
  const [{data:prods,error:pe},{data:history,error:he}]=await Promise.all([
-  db.from("products").select("id,name,purchase_price_usd").eq("active",true).order("name"),
+  db.from("products").select("id,name,purchase_price_usd,tracking_type").eq("active",true).order("name"),
   db.from("purchases").select("id,invoice_no,total_usd,created_at,supplier:suppliers(name)").eq("branch_id",branchId).order("created_at",{ascending:false}).limit(50)
  ]);
  if(pe)throw pe;if(he)throw he;
- h.innerHTML=(can("purchases.create")?'<div class="panel"><h2>إدخال فاتورة مشتريات</h2><div class="formgrid"><div><label>اسم المورد</label><input id="buySupplier"></div><div><label>رقم الفاتورة</label><input id="buyInvoice"></div><div><label>الصنف</label><select id="buyProduct">'+prods.map(x=>'<option value="'+x.id+'" data-name="'+esc(x.name)+'" data-cost="'+x.purchase_price_usd+'">'+esc(x.name)+'</option>').join("")+'</select></div><div><label>الكمية</label><input id="buyQty" type="number" min=".01" step=".01" value="1"></div><div><label>كلفة الوحدة $</label><input id="buyCost" type="number" min="0" step=".01" value="0"></div><div><label>سعر الصرف LBP لكل $</label><input id="buyRate" type="number" min="1" step="1"></div></div><div class="actions"><button class="btn ghost" id="buyAdd" type="button">إضافة الصنف</button></div><div id="buyCart"></div><button class="btn green" id="buySave" type="button">حفظ الفاتورة وزيادة المخزون</button><div id="buyMsg" class="msg"></div></div>':'')+'<div class="panel"><h2>سجل المشتريات</h2><div class="tablewrap"><table><thead><tr><th>الفاتورة</th><th>المورد</th><th>الإجمالي $</th><th>التاريخ</th></tr></thead><tbody>'+history.map(x=>'<tr><td>'+esc(x.invoice_no||"—")+'</td><td>'+esc(x.supplier?.name||"—")+'</td><td>'+Number(x.total_usd).toFixed(2)+'</td><td>'+new Date(x.created_at).toLocaleString("ar-LB")+'</td></tr>').join("")+'</tbody></table></div></div>';
+ h.innerHTML=(can("purchases.create")?'<div class="panel"><h2>إدخال فاتورة مشتريات</h2><div class="formgrid"><div><label>اسم المورد</label><input id="buySupplier"></div><div><label>رقم الفاتورة</label><input id="buyInvoice"></div><div><label>الصنف</label><select id="buyProduct">'+prods.map(x=>'<option value="'+x.id+'" data-name="'+esc(x.name)+'" data-cost="'+x.purchase_price_usd+'" data-track="'+x.tracking_type+'">'+esc(x.name)+'</option>').join("")+'</select></div><div><label>الكمية</label><input id="buyQty" type="number" min=".01" step=".01" value="1"></div><div><label>كلفة الوحدة $</label><input id="buyCost" type="number" min="0" step=".01" value="0"></div><div class="field full" id="buyIdentifiersWrap" style="display:none"><label>IMEI / Serial — رقم كل قطعة بسطر</label><textarea id="buyIdentifiers" placeholder="أدخل رقماً واحداً بكل سطر"></textarea></div><div><label>سعر الصرف LBP لكل $</label><input id="buyRate" type="number" min="1" step="1"></div></div><div class="actions"><button class="btn ghost" id="buyAdd" type="button">إضافة الصنف</button></div><div id="buyCart"></div><button class="btn green" id="buySave" type="button">حفظ الفاتورة وزيادة المخزون</button><div id="buyMsg" class="msg"></div></div>':'')+'<div class="panel"><h2>سجل المشتريات</h2><div class="tablewrap"><table><thead><tr><th>الفاتورة</th><th>المورد</th><th>الإجمالي $</th><th>التاريخ</th></tr></thead><tbody>'+history.map(x=>'<tr><td>'+esc(x.invoice_no||"—")+'</td><td>'+esc(x.supplier?.name||"—")+'</td><td>'+Number(x.total_usd).toFixed(2)+'</td><td>'+new Date(x.created_at).toLocaleString("ar-LB")+'</td></tr>').join("")+'</tbody></table></div></div>';
  if(!$("buyAdd"))return;
  let cart=[];
  const redraw=()=>{
@@ -306,13 +306,13 @@ async function purchasesPage(h){
   $("buyCart").innerHTML='<p>عدد الأصناف: '+cart.length+' — الإجمالي: $'+total.toFixed(2)+'</p>'+cart.map((x,i)=>'<div class="notice" style="margin:6px 0;display:flex;justify-content:space-between;gap:10px"><span>'+esc(x.name)+' × '+x.quantity+' — $'+(x.quantity*x.unit_cost_usd).toFixed(2)+'</span><button class="btn red" type="button" data-remove-buy="'+i+'">حذف</button></div>').join("");
   $("buyCart").querySelectorAll("[data-remove-buy]").forEach(b=>b.onclick=()=>{cart.splice(Number(b.dataset.removeBuy),1);redraw()});
  };
- $("buyProduct").onchange=()=>{$("buyCost").value=$("buyProduct").selectedOptions[0]?.dataset.cost||0};
+ $("buyProduct").onchange=()=>{const o=$("buyProduct").selectedOptions[0],tracked=["imei","serial"].includes(o?.dataset.track||"");$("buyCost").value=o?.dataset.cost||0;$("buyIdentifiersWrap").style.display=tracked?"block":"none";$("buyIdentifiers").value="";$("buyQty").step=tracked?"1":".01"};
  $("buyProduct").dispatchEvent(new Event("change"));
  $("buyAdd").onclick=()=>{
   const opt=$("buyProduct").selectedOptions[0],quantity=Number($("buyQty").value),cost=Number($("buyCost").value);
   if(!opt){msg("buyMsg","أضف المنتجات أولاً");return}
   if(!Number.isFinite(quantity)||quantity<=0||!Number.isFinite(cost)||cost<0){msg("buyMsg","تحقّق من الكمية والكلفة");return}
-  cart.push({product_id:opt.value,name:opt.dataset.name,quantity,unit_cost_usd:cost});
+  const tracked=["imei","serial"].includes(opt.dataset.track||"");const identifiers=tracked?$("buyIdentifiers").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean):[];if(tracked&&(!Number.isInteger(quantity)||identifiers.length!==quantity))throw Error("أدخل رقم IMEI/Serial مستقل لكل قطعة وبعدد يساوي الكمية");if(!tracked&&identifiers.length)throw Error("الإكسسوارات تُدار بالكميات فقط");const normalized=identifiers.map(x=>x.toLowerCase());if(new Set(normalized).size!==normalized.length||identifiers.some(id=>cart.some(row=>(row.identifiers||[]).some(old=>old.toLowerCase()===id))))throw Error("يوجد IMEI/Serial مكرر في الفاتورة");cart.push({product_id:opt.value,name:opt.dataset.name,quantity,unit_cost_usd:cost,...(tracked?{identifiers}:{})});$("buyIdentifiers").value="";
   redraw();msg("buyMsg","تمت إضافة الصنف",true);
  };
  $("buySave").onclick=async()=>{
@@ -320,7 +320,7 @@ async function purchasesPage(h){
   try{
    if(!cart.length)throw Error("أضف صنفاً واحداً على الأقل");
    const rate=Number($("buyRate").value);if(!Number.isFinite(rate)||rate<=0)throw Error("أدخل سعر صرف صحيح");
-   const result=await call("create_pos_purchase",{p_branch_id:branchId,p_supplier_name:$("buySupplier").value.trim(),p_invoice_no:$("buyInvoice").value.trim(),p_items:cart.map(({product_id,quantity,unit_cost_usd})=>({product_id,quantity,unit_cost_usd})),p_exchange_rate:rate});
+   const result=await call("create_pos_purchase",{p_branch_id:branchId,p_supplier_name:$("buySupplier").value.trim(),p_invoice_no:$("buyInvoice").value.trim(),p_items:cart.map(({product_id,quantity,unit_cost_usd,identifiers})=>({product_id,quantity,unit_cost_usd,...(identifiers?{identifiers}:{})})),p_exchange_rate:rate});
    msg("buyMsg","تم حفظ الفاتورة وزيادة المخزون. الإجمالي $"+Number(result.total_usd).toFixed(2),true);
    await purchasesPage(h);
   }catch(e){msg("buyMsg",e.message)}finally{b.disabled=false}
