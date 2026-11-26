@@ -40,10 +40,11 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function msg(id,t,ok=false){const e=$(id);if(e){e.textContent=t;e.style.color=ok?"#58d6a6":"#ffbdad"}}
 window.sendRecoveryNow=async function(){
  const b=$("sendRecovery"),email=$("forgotEmail").value.trim(),out=$("forgotMsg");
- out.textContent="تم الضغط. جارٍ إرسال طلب الاستعادة...";
+ const resetButton=()=>{b.disabled=false;b.textContent="إرسال رابط الاستعادة"};
+ out.textContent="جارٍ إرسال طلب الاستعادة...";
  out.style.color="#ffbdad";
- if(!email){out.textContent="اكتب البريد الإلكتروني أولاً.";return}
- if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){out.textContent="صيغة البريد الإلكتروني غير صحيحة.";return}
+ if(!email){out.textContent="اكتب البريد الإلكتروني أولاً.";resetButton();return}
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){out.textContent="صيغة البريد الإلكتروني غير صحيحة.";resetButton();return}
  b.disabled=true;
  try{
   const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo:"https://testing--sniper-cell-pos.netlify.app/"});
@@ -51,8 +52,9 @@ window.sendRecoveryNow=async function(){
   out.textContent="تم إرسال الطلب. إذا كان البريد مسجلاً، افحص الوارد والرسائل غير المرغوب فيها.";
   out.style.color="#58d6a6";
  }catch(x){out.textContent="تعذّر إرسال الرابط: "+(x?.message||"خطأ غير معروف");out.style.color="#ffbdad"}
- finally{b.disabled=false}
+ finally{resetButton()}
 };
+
 async function call(fn,args){const {data,error}=await db.rpc(fn,args);if(error)throw error;return data}
 async function loadContext(u){
  user=u;const {data:p,error}=await db.from("profiles").select("*").eq("id",u.id).single();if(error)throw error;if(!p?.active)throw Error("الحساب غير مفعّل");profile=p;
@@ -211,7 +213,37 @@ async function purchasesPage(h){
   }catch(e){msg("buyMsg",e.message)}finally{b.disabled=false}
  };
 }
-async function reportsPage(h){if(!can("reports.view")&&!can("sales.view"))throw Error("لا تملك صلاحية التقارير");const [{data:s,error:se},{data:e,error:ee},{data:top,error:te}]=await Promise.all([db.from("sales").select("total_usd,created_at").eq("branch_id",branchId),db.from("expenses").select("amount,currency,status").eq("branch_id",branchId),db.from("topups").select("card_amount_usd,cost_usd").eq("branch_id",branchId)]);if(se)throw se;if(ee)throw ee;if(te)throw te;const total=(s||[]).reduce((a,x)=>a+Number(x.total_usd),0),approved=(e||[]).filter(x=>x.status==="approved");h.innerHTML='<div class="grid"><div class="panel"><div class="muted">عدد فواتير البيع</div><h2>'+s.length+'</h2></div><div class="panel"><div class="muted">إجمالي المبيعات $</div><h2>'+total.toFixed(2)+'</h2></div><div class="panel"><div class="muted">المصاريف المعتمدة</div><h2>'+approved.length+'</h2></div><div class="panel"><div class="muted">عمليات التعبئة</div><h2>'+top.length+'</h2></div></div><div class="panel notice">التقارير الحالية ملخص أولي؛ الأرباح التفصيلية وحركة الصندوق والجرد تحتاج إكمال واجهة المشتريات والتكاليف.</div>'}
+async function reportsPage(h){
+ if(!can("reports.view")&&!can("sales.view"))throw Error("لا تملك صلاحية التقارير");
+ if(!branchId)throw Error("اختار فرعاً أولاً");
+ const [{data:s,error:se},{data:p,error:pe},{data:e,error:ee},{data:t,error:te},{data:c,error:ce}]=await Promise.all([
+  db.from("sales").select("id,total_usd,total_lbp,status,created_at").eq("branch_id",branchId).eq("status","completed"),
+  db.from("purchases").select("id,total_usd,created_at").eq("branch_id",branchId),
+  db.from("expenses").select("amount,currency,status,created_at").eq("branch_id",branchId),
+  db.from("topups").select("card_amount_usd,cost_usd,created_at").eq("branch_id",branchId),
+  db.from("cash_transactions").select("direction,amount,currency,created_at").eq("branch_id",branchId)
+ ]);
+ if(se)throw se;if(pe)throw pe;if(ee)throw ee;if(te)throw te;if(ce)throw ce;
+ const sum=(arr,key,filter=()=>true)=>arr.filter(filter).reduce((n,x)=>n+Number(x[key]||0),0);
+ const sales=s||[],purchases=p||[],expenses=e||[],topups=t||[],cash=c||[];
+ const usdApproved=sum(expenses,"amount",x=>x.status==="approved"&&x.currency==="USD");
+ const lbpApproved=sum(expenses,"amount",x=>x.status==="approved"&&x.currency==="LBP");
+ const usdPending=sum(expenses,"amount",x=>x.status==="pending"&&x.currency==="USD");
+ const lbpPending=sum(expenses,"amount",x=>x.status==="pending"&&x.currency==="LBP");
+ const usdIn=sum(cash,"amount",x=>x.currency==="USD"&&x.direction==="in");
+ const usdOut=sum(cash,"amount",x=>x.currency==="USD"&&x.direction==="out");
+ const lbpIn=sum(cash,"amount",x=>x.currency==="LBP"&&x.direction==="in");
+ const lbpOut=sum(cash,"amount",x=>x.currency==="LBP"&&x.direction==="out");
+ h.innerHTML='<div class="panel"><div class="sectionhead"><h2>ملخص الفرع — كل الفترة</h2><span class="tag">'+esc(branches.find(b=>b.id===branchId)?.name||"")+'</span></div><p class="muted">الأرقام مفصولة حسب العملة، ولا يتم جمع الدولار والليرة بسعر صرف غير موثّق.</p></div>'+
+ '<div class="grid"><div class="panel"><div class="muted">فواتير البيع المكتملة</div><h2>'+sales.length+'</h2><b>$'+sum(sales,"total_usd").toFixed(2)+'</b><div class="muted">إجمالي الدولار المسجل في الفواتير</div></div>'+
+ '<div class="panel"><div class="muted">فواتير المشتريات</div><h2>'+purchases.length+'</h2><b>$'+sum(purchases,"total_usd").toFixed(2)+'</b><div class="muted">قيمة الشراء المسجلة</div></div>'+
+ '<div class="panel"><div class="muted">مصاريف معتمدة — USD</div><h2>$'+usdApproved.toFixed(2)+'</h2><div class="muted">مصاريف بانتظار المراجعة: $'+usdPending.toFixed(2)+'</div></div>'+
+ '<div class="panel"><div class="muted">مصاريف معتمدة — LBP</div><h2>'+lbpApproved.toLocaleString("en-US")+' ل.ل</h2><div class="muted">مصاريف بانتظار المراجعة: '+lbpPending.toLocaleString("en-US")+' ل.ل</div></div>'+
+ '<div class="panel"><div class="muted">عمليات التعبئة</div><h2>'+topups.length+'</h2><b>الكلفة: $'+sum(topups,"cost_usd").toFixed(2)+'</b></div>'+
+ '<div class="panel"><div class="muted">صافي حركة الصندوق — USD</div><h2>$'+(usdIn-usdOut).toFixed(2)+'</h2><div class="muted">وارد $'+usdIn.toFixed(2)+' · صادر $'+usdOut.toFixed(2)+'</div></div>'+
+ '<div class="panel"><div class="muted">صافي حركة الصندوق — LBP</div><h2>'+(lbpIn-lbpOut).toLocaleString("en-US")+' ل.ل</h2><div class="muted">وارد '+lbpIn.toLocaleString("en-US")+' · صادر '+lbpOut.toLocaleString("en-US")+' ل.ل</div></div></div>'+
+ '<div class="panel notice">هذا تقرير حركة تشغيلية وليس كشف أرباح نهائياً: قيمة المشتريات قد تبقى ضمن المخزون، ولا تُحسب كلفة البضاعة المباعة أو الربح الصافي إلا بعد ربط تكلفة كل قطعة بالمبيعات.</div>';
+}
 async function settingsPage(h){if(!can("settings.manage"))throw Error("لا تملك صلاحية الإعدادات");const {data:r,error}=await db.from("branch_fx_rates").select("*").eq("branch_id",branchId).maybeSingle();if(error)throw error;h.innerHTML='<div class="panel"><h2>سعر الصرف للفرع الحالي</h2><label>عدد الليرات لكل دولار</label><input id="fxRate" type="number" min="1" step="1" value="'+(r?.lbp_per_usd||"")+'"><button class="btn" id="saveFx">حفظ سعر الصرف</button><div id="fxMsg" class="msg"></div></div>';$("saveFx").onclick=async()=>{try{const {error}=await db.from("branch_fx_rates").upsert({branch_id:branchId,lbp_per_usd:Number($("fxRate").value),updated_by:user.id});if(error)throw error;msg("fxMsg","تم حفظ سعر الصرف",true)}catch(e){msg("fxMsg",e.message)}}}
 const recoveryRequested=new URLSearchParams(location.hash.slice(1)).get("type")==="recovery"||new URLSearchParams(location.search).get("type")==="recovery";db.auth.onAuthStateChange((event,session)=>{if(event==="PASSWORD_RECOVERY"||(recoveryRequested&&session)){showRecovery(session)}});db.auth.getSession().then(async({data,error})=>{if(recoveryRequested){showRecovery(data?.session||null);if(!data?.session)msg("recoveryMsg","تعذّر تأكيد رابط الاستعادة. اطلب رابطاً جديداً وافتح أحدث رسالة.");return}if(data.session?.user){try{await loadContext(data.session.user)}catch(e){await db.auth.signOut();$("loginMsg").textContent=e.message}}});
 </script></body></html>
