@@ -222,9 +222,9 @@ async function scanBarcode(onDetected,messageId){
   const BrowserReader=window.ZXingBrowser?.BrowserMultiFormatReader;
   if(!BrowserReader){status("ما قدرنا نحمّل مكتبة قراءة الباركود. تأكّد من الإنترنت وحدّث الصفحة.");return}
   let hints;
-  try{hints=new Map();const F=window.ZXing.BarcodeFormat;hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS,[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.CODE_128,F.CODE_39,F.ITF,F.QR_CODE]);hints.set(window.ZXing.DecodeHintType.TRY_HARDER,true)}catch(e){}
+  try{hints=new Map();const F=window.ZXing.BarcodeFormat;const allFormats=Object.keys(F).filter(k=>Number.isNaN(Number(k))).map(k=>F[k]);hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS,allFormats);hints.set(window.ZXing.DecodeHintType.TRY_HARDER,true);hints.set(window.ZXing.DecodeHintType.ALSO_INVERTED,true)}catch(e){}
   reader=new BrowserReader(hints);
-  if("BarcodeDetector" in window){try{const supported=await BarcodeDetector.getSupportedFormats();const formats=["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","qr_code"].filter(x=>supported.includes(x));if(formats.length)detector=new BarcodeDetector({formats})}catch(e){}}
+  if("BarcodeDetector" in window){try{const supported=await BarcodeDetector.getSupportedFormats();const formats=["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","qr_code","data_matrix","pdf417","aztec","codabar","upc_ean_extension"].filter(x=>supported.includes(x));if(formats.length)detector=new BarcodeDetector({formats})}catch(e){}}
   photo.onchange=async()=>{
    const file=photo.files?.[0];if(!file)return;
    status("عم نقرأ الصورة...");
