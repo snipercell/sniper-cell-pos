@@ -667,44 +667,49 @@ async function reportsPage(h){
  if(!can("reports.view"))throw Error("لا تملك صلاحية التقارير");
  if(!branchId)throw Error("اختار فرعاً أولاً");
  const [{data:s,error:se},{data:p,error:pe},{data:e,error:ee},{data:t,error:te},{data:c,error:ce}]=await Promise.all([
-  db.from("sales").select("id,total_usd,total_lbp,status,created_at").eq("branch_id",branchId).eq("status","completed"),
-  db.from("purchases").select("id,total_usd,created_at").eq("branch_id",branchId),
-  db.from("expenses").select("amount,currency,status,created_at").eq("branch_id",branchId),
-  db.from("topups").select("category,provider,card_amount_usd,cost_usd,sell_price_usd,sell_price_lbp,sell_currency,created_at").eq("branch_id",branchId),
-  db.from("cash_transactions").select("direction,amount,currency,created_at").eq("branch_id",branchId)
+  db.from("sales").select("*").eq("branch_id",branchId).eq("status","completed"),
+  db.from("purchases").select("id,invoice_no,total_usd,created_at,supplier:suppliers(name)").eq("branch_id",branchId),
+  db.from("expenses").select("id,description,amount,currency,status,created_at,recorded_by,recorder:profiles!expenses_recorded_by_fkey(full_name,username)").eq("branch_id",branchId),
+  db.from("topups").select("id,category,provider,duration,card_amount_usd,days_count,months_count,quantity,cost_usd,sell_price_usd,sell_price_lbp,sell_currency,created_at").eq("branch_id",branchId),
+  db.from("cash_transactions").select("id,direction,description,amount,currency,related_type,created_at").eq("branch_id",branchId)
  ]);
  if(se)throw se;if(pe)throw pe;if(ee)throw ee;if(te)throw te;if(ce)throw ce;
  const sales=s||[],purchases=p||[],expenses=e||[],topups=t||[],cash=c||[];
  const dateKey=x=>{const d=new Date(x);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
- const today=dateKey(new Date());
- const sum=(arr,key,filter=()=>true)=>arr.filter(filter).reduce((n,x)=>n+Number(x[key]||0),0);
+ const today=dateKey(new Date()),sum=(arr,key,filter=()=>true)=>arr.filter(filter).reduce((n,x)=>n+Number(x[key]||0),0);
+ const moneyDate=x=>new Date(x).toLocaleString("ar-LB");
  const render=day=>{
   const inDay=arr=>arr.filter(x=>dateKey(x.created_at)===day);
   const ds=inDay(sales),dp=inDay(purchases),de=inDay(expenses),dt=inDay(topups),dc=inDay(cash);
-  const usdApproved=sum(de,"amount",x=>x.status==="approved"&&x.currency==="USD");
-  const lbpApproved=sum(de,"amount",x=>x.status==="approved"&&x.currency==="LBP");
-  const usdPending=sum(de,"amount",x=>x.status==="pending"&&x.currency==="USD");
-  const lbpPending=sum(de,"amount",x=>x.status==="pending"&&x.currency==="LBP");
-  const usdIn=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="in");
-  const usdOut=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="out");
-  const lbpIn=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="in");
-  const lbpOut=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="out");
-  const dollars=dt.filter(x=>x.category==="dollars"||x.category==="days");
-  const months=dt.filter(x=>x.category==="months");
-  const cards=dt.filter(x=>(x.category||"cards")==="cards");
-  h.innerHTML='<div class="panel"><div class="sectionhead"><h2>التقارير اليومية</h2><span class="tag">'+esc(branches.find(b=>b.id===branchId)?.name||"")+'</span></div><p class="muted">اختار أي تاريخ لتشوف حركة هيدا اليوم فقط.</p><div class="formgrid"><div><label>تاريخ التقرير</label><input id="reportDate" type="date" value="'+day+'"></div><div style="display:flex;align-items:end"><button class="btn" id="showReportDate">عرض التقرير</button></div></div></div>'+
-  '<div class="panel"><div class="sectionhead"><h2>تقرير يوم '+new Date(day+"T12:00:00").toLocaleDateString("ar-LB")+'</h2><span class="tag">'+(ds.length+dp.length+de.length+dt.length+dc.length)+' حركة</span></div><p class="muted">كل الأرقام التالية محصورة بالتاريخ المختار، والعملتان معروضتان بشكل منفصل.</p></div>'+
-  '<div class="grid"><div class="panel"><div class="muted">المبيعات المكتملة</div><h2>'+ds.length+' فاتورة</h2><b>$'+sum(ds,"total_usd").toFixed(2)+'</b><div class="muted">'+sum(ds,"total_lbp").toLocaleString("en-US")+' ل.ل</div></div>'+
-  '<div class="panel"><div class="muted">المشتريات</div><h2>'+dp.length+' فاتورة</h2><b>$'+sum(dp,"total_usd").toFixed(2)+'</b></div>'+
-  '<div class="panel"><div class="muted">المصاريف المعتمدة USD</div><h2>$'+usdApproved.toFixed(2)+'</h2><div class="muted">بانتظار الموافقة: $'+usdPending.toFixed(2)+'</div></div>'+
-  '<div class="panel"><div class="muted">المصاريف المعتمدة LBP</div><h2>'+lbpApproved.toLocaleString("en-US")+' ل.ل</h2><div class="muted">بانتظار الموافقة: '+lbpPending.toLocaleString("en-US")+' ل.ل</div></div>'+
-  '<div class="panel"><div class="muted">بيع دولارات</div><h2>'+dollars.length+' عملية</h2><b>المبيع: $'+sum(dollars,"sell_price_usd").toFixed(2)+' · LBP '+sum(dollars,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+'</b><div class="muted">كلفة: $'+sum(dollars,"cost_usd").toFixed(2)+' · ربح: $'+(sum(dollars,"sell_price_usd")-sum(dollars,"cost_usd")).toFixed(2)+'</div></div>'+
-  '<div class="panel"><div class="muted">بيع أشهر</div><h2>'+months.length+' عملية</h2><b>المبيع: $'+sum(months,"sell_price_usd").toFixed(2)+' · LBP '+sum(months,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+'</b><div class="muted">كلفة: $'+sum(months,"cost_usd").toFixed(2)+' · ربح: $'+(sum(months,"sell_price_usd")-sum(months,"cost_usd")).toFixed(2)+'</div></div>'+
-  '<div class="panel"><div class="muted">بيع كروت</div><h2>'+cards.length+' عملية</h2><b>المبيع: $'+sum(cards,"sell_price_usd").toFixed(2)+' · LBP '+sum(cards,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+'</b><div class="muted">كلفة: $'+sum(cards,"cost_usd").toFixed(2)+' · ربح: $'+(sum(cards,"sell_price_usd")-sum(cards,"cost_usd")).toFixed(2)+'</div></div>'+
-  '<div class="panel"><div class="muted">صافي الصندوق USD</div><h2>$'+(usdIn-usdOut).toFixed(2)+'</h2><div class="muted">وارد $'+usdIn.toFixed(2)+' · صادر $'+usdOut.toFixed(2)+'</div></div>'+
-  '<div class="panel"><div class="muted">صافي الصندوق LBP</div><h2>'+(lbpIn-lbpOut).toLocaleString("en-US")+' ل.ل</h2><div class="muted">وارد '+lbpIn.toLocaleString("en-US")+' · صادر '+lbpOut.toLocaleString("en-US")+' ل.ل</div></div></div>'+
+  const usdApproved=sum(de,"amount",x=>x.status==="approved"&&x.currency==="USD"),lbpApproved=sum(de,"amount",x=>x.status==="approved"&&x.currency==="LBP"),usdPending=sum(de,"amount",x=>x.status==="pending"&&x.currency==="USD"),lbpPending=sum(de,"amount",x=>x.status==="pending"&&x.currency==="LBP");
+  const usdIn=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="in"),usdOut=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="out"),lbpIn=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="in"),lbpOut=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="out");
+  const dollars=dt.filter(x=>x.category==="dollars"||x.category==="days"),months=dt.filter(x=>x.category==="months"),cards=dt.filter(x=>(x.category||"cards")==="cards");
+  const detailRows={
+   sales:ds.map(x=>'<tr><td>'+esc(x.invoice_no||x.id||"—")+'</td><td>$'+Number(x.total_usd||0).toFixed(2)+'</td><td>'+Number(x.total_lbp||0).toLocaleString("en-US")+' ل.ل</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   purchases:dp.map(x=>'<tr><td>'+esc(x.invoice_no||"—")+'</td><td>'+esc(x.supplier?.name||"—")+'</td><td>$'+Number(x.total_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   expenses:de.map(x=>'<tr><td>'+esc(x.description||"—")+'</td><td>'+Number(x.amount||0).toLocaleString("en-US")+' '+esc(x.currency)+'</td><td>'+esc(x.status||"—")+'</td><td>'+esc(x.recorder?.full_name||x.recorder?.username||"—")+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   dollars:dollars.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+(x.category==="days"?Number(x.days_count||0)+" يوم":"$"+Number(x.card_amount_usd||0).toFixed(2))+'</td><td>'+Number(x.quantity||1)+'</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   months:months.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+Number(x.months_count||0)+' شهر</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   cards:cards.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+Number(x.quantity||1)+'</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>$'+Number(x.cost_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   cash:dc.map(x=>'<tr><td>'+(x.direction==="in"?"وارد":"صادر")+'</td><td>'+esc(x.description||"—")+'</td><td>'+Number(x.amount||0).toLocaleString("en-US")+' '+esc(x.currency)+'</td><td>'+esc(x.related_type||"يدوي")+'</td><td>'+moneyDate(x.created_at)+'</td></tr>')
+  };
+  const detailHeaders={sales:"<th>رقم الفاتورة</th><th>USD</th><th>LBP</th><th>التاريخ</th>",purchases:"<th>الفاتورة</th><th>المورد</th><th>الإجمالي</th><th>التاريخ</th>",expenses:"<th>البيان</th><th>المبلغ</th><th>الحالة</th><th>المسجّل</th><th>التاريخ</th>",dollars:"<th>الشركة</th><th>التعبئة</th><th>الكمية</th><th>المبيع</th><th>التاريخ</th>",months:"<th>الشركة</th><th>المدة</th><th>المبيع</th><th>التاريخ</th>",cards:"<th>الشركة</th><th>الكمية</th><th>المبيع</th><th>الكلفة</th><th>التاريخ</th>",cash:"<th>الحركة</th><th>البيان</th><th>المبلغ</th><th>النوع</th><th>التاريخ</th>"};
+  const titles={sales:"تفاصيل المبيعات",purchases:"تفاصيل المشتريات",expenses:"تفاصيل المصاريف",dollars:"تفاصيل بيع الدولارات",months:"تفاصيل بيع الأشهر",cards:"تفاصيل بيع الكروت",cash:"تفاصيل الصندوق"};
+  h.innerHTML='<div class="panel"><div class="sectionhead"><h2>التقارير اليومية</h2><span class="tag">'+esc(branches.find(b=>b.id===branchId)?.name||"")+'</span></div><p class="muted">اختار التاريخ، وبعدها اكبس على أي قسم لتظهر تفاصيل عملياته.</p><div class="formgrid"><div><label>تاريخ التقرير</label><input id="reportDate" type="date" value="'+day+'"></div><div style="display:flex;align-items:end"><button class="btn" id="showReportDate">عرض التقرير</button></div></div></div>'+
+  '<div class="panel"><div class="sectionhead"><h2>تقرير يوم '+new Date(day+"T12:00:00").toLocaleDateString("ar-LB")+'</h2><span class="tag">'+(ds.length+dp.length+de.length+dt.length+dc.length)+' حركة</span></div><p class="muted">اكبس على البطاقة لعرض التفاصيل.</p></div>'+
+  '<div class="grid">'+
+  '<button type="button" class="panel" data-report-detail="sales"><div class="muted">المبيعات المكتملة</div><h2>'+ds.length+' فاتورة</h2><b>$'+sum(ds,"total_usd").toFixed(2)+'</b><div class="muted">'+sum(ds,"total_lbp").toLocaleString("en-US")+' ل.ل</div></button>'+
+  '<button type="button" class="panel" data-report-detail="purchases"><div class="muted">المشتريات</div><h2>'+dp.length+' فاتورة</h2><b>$'+sum(dp,"total_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="expenses"><div class="muted">المصاريف</div><h2>$'+usdApproved.toFixed(2)+' معتمدة</h2><div class="muted">بانتظار: $'+usdPending.toFixed(2)+' · '+lbpApproved.toLocaleString("en-US")+' ل.ل معتمدة · '+lbpPending.toLocaleString("en-US")+' ل.ل بانتظار</div></button>'+
+  '<button type="button" class="panel" data-report-detail="dollars"><div class="muted">بيع دولارات</div><h2>'+dollars.length+' عملية</h2><b>$'+sum(dollars,"sell_price_usd").toFixed(2)+' · '+sum(dollars,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</b></button>'+
+  '<button type="button" class="panel" data-report-detail="months"><div class="muted">بيع أشهر</div><h2>'+months.length+' عملية</h2><b>$'+sum(months,"sell_price_usd").toFixed(2)+' · '+sum(months,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</b></button>'+
+  '<button type="button" class="panel" data-report-detail="cards"><div class="muted">بيع كروت</div><h2>'+cards.length+' عملية</h2><b>$'+sum(cards,"sell_price_usd").toFixed(2)+' · '+sum(cards,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</b></button>'+
+  '<button type="button" class="panel" data-report-detail="cash"><div class="muted">صافي الصندوق USD</div><h2>$'+(usdIn-usdOut).toFixed(2)+'</h2><div class="muted">وارد $'+usdIn.toFixed(2)+' · صادر $'+usdOut.toFixed(2)+'</div></button>'+
+  '<button type="button" class="panel" data-report-detail="cash"><div class="muted">صافي الصندوق LBP</div><h2>'+(lbpIn-lbpOut).toLocaleString("en-US")+' ل.ل</h2><div class="muted">وارد '+lbpIn.toLocaleString("en-US")+' · صادر '+lbpOut.toLocaleString("en-US")+' ل.ل</div></button></div>'+
+  '<div class="panel" id="reportDetails"><div class="muted">اكبس على أي قسم من الأقسام بالأعلى لعرض تفاصيله.</div></div>'+
   '<div class="panel notice">هذا تقرير حركة يومية، وليس كشف أرباح نهائياً: لا تُحسب كلفة البضاعة المباعة أو الربح الصافي إلا بعد ربط تكلفة كل قطعة بالمبيعات.</div>';
-  $("showReportDate").onclick=()=>{const value=$("reportDate").value;if(!value){msg("reportDate","اختار التاريخ");return}render(value)};
+  h.querySelectorAll("[data-report-detail]").forEach(b=>b.onclick=()=>{const key=b.dataset.reportDetail,rows=detailRows[key]||[];h.querySelectorAll("[data-report-detail]").forEach(x=>x.style.outline=x===b?"2px solid var(--accent)":"");$("reportDetails").innerHTML='<div class="sectionhead"><h2>'+titles[key]+'</h2><span class="tag">'+rows.length+' عملية</span></div><div class="tablewrap"><table><thead><tr>'+detailHeaders[key]+'</tr></thead><tbody>'+(rows.length?rows.join(""):'<tr><td colspan="6" class="muted">ما في عمليات بهيدا التاريخ</td></tr>')+'</tbody></table></div>'});
+  $("showReportDate").onclick=()=>{const value=$("reportDate").value;if(!value)return msg("reportDate","اختار التاريخ");render(value)};
   $("reportDate").onchange=()=>{if($("reportDate").value)render($("reportDate").value)};
  };
  render(today);
