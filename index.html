@@ -612,7 +612,7 @@ async function purchasesPage(h){
    const rate=Number($("buyRate").value);if(!Number.isFinite(rate)||rate<=0)throw Error("أدخل سعر صرف صحيح");
    const result=await call("create_pos_purchase",{p_branch_id:branchId,p_supplier_name:$("buySupplier").value.trim(),p_invoice_no:$("buyInvoice").value.trim(),p_items:cart.map(({product_id,quantity,unit_cost_usd,identifiers})=>({product_id,quantity,unit_cost_usd,...(identifiers?{identifiers}:{})})),p_exchange_rate:rate});
    let photoNotice="";
-   if(buyInvoicePhotoData){const {error:photoError}=await db.from("purchases").update({invoice_image_url:buyInvoicePhotoData}).eq("id",result.purchase_id).eq("branch_id",branchId);if(photoError)photoNotice=" لكن تعذّر حفظ صورة الفاتورة: "+photoError.message;}
+   if(buyInvoicePhotoData){const {error:photoError}=await db.rpc("save_purchase_invoice_photo",{p_purchase_id:result.purchase_id,p_image:buyInvoicePhotoData});if(photoError)photoNotice=" لكن تعذّر حفظ صورة الفاتورة: "+photoError.message;}
    msg("buyMsg","تم حفظ الفاتورة وزيادة المخزون. الإجمالي $"+Number(result.total_usd).toFixed(2)+(buyInvoicePhotoData&&!photoNotice?" — وتم حفظ صورة الفاتورة":photoNotice),!photoNotice);
    buyInvoicePhotoData=null;
    await purchasesPage(h);
