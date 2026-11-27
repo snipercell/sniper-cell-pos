@@ -680,49 +680,18 @@ async function purchasesPage(h){
 
 async function auditPage(h){
  if(!perms.has("audit.view"))throw Error("هذا القسم خاص وغير متاح لهذا الحساب");
- const {data:rows,error}=await db.from("audit_log").select("id,actor_user_id,action,target_type,target_id,details,created_at").order("created_at",{ascending:false}).limit(300);
- if(error)throw error;
- const actorIds=[...new Set((rows||[]).map(x=>x.actor_user_id).filter(Boolean))];
- let actorMap={};
- if(actorIds.length){
-  const {data:actors,error:actorError}=await db.from("profiles").select("id,full_name,username").in("id",actorIds);
-  if(actorError)throw actorError;
-  actorMap=Object.fromEntries((actors||[]).map(x=>[x.id,x.full_name||x.username||x.id]));
- }
- const actionNames={insert:"إضافة",update:"تعديل",delete:"حذف",account:"حساب",approve_return:"اعتماد مرتجع"};
- const sanitizeAuditDisplay=value=>{
-  if(Array.isArray(value))return value.map(sanitizeAuditDisplay);
-  if(value&&typeof value==="object"){
-   const out={};
-   for(const [key,val] of Object.entries(value)){
-    out[key]=(["image_url","invoice_image_url","photo_url","avatar_url"].includes(key.toLowerCase())&&typeof val==="string"&&val.startsWith("data:image/"))?"[تم إخفاء بيانات الصورة]":sanitizeAuditDisplay(val);
-   }
-   return out;
-  }
-  return typeof value==="string"&&value.startsWith("data:image/")?"[تم إخفاء بيانات الصورة]":value;
- };
- const escJson=v=>esc(JSON.stringify(sanitizeAuditDisplay(v??{}),null,2));
+ const {data:rows,error}=await db.from("audit_log").select("id,actor_user_id,action,target_type,target_id,details,created_at").order("created_at",{ascending:false}).limit(300);if(error)throw error;
+ const ids=[...new Set((rows||[]).map(x=>x.actor_user_id).filter(Boolean))];let actors={};if(ids.length){const {data,error}=await db.from("profiles").select("id,full_name,username").in("id",ids);if(error)throw error;actors=Object.fromEntries((data||[]).map(x=>[x.id,x.full_name||x.username||x.id]));}
+ const actions={insert:"إضافة",update:"تعديل",delete:"حذف",account:"حساب",approve_return:"اعتماد مرتجع"};
+ const labels={name:"اسم الصنف",active:"الحالة",barcode:"الباركود",category:"التصنيف",image_url:"الصورة",tracking_type:"طريقة تتبّع المخزون",protector_type:"نوع الحماية",sell_price_usd:"سعر البيع بالدولار",purchase_price_usd:"سعر الشراء بالدولار",branch_id:"الفرع",quantity:"الكمية",price:"السعر",amount:"المبلغ",currency:"العملة",description:"الوصف",invoice_no:"رقم الفاتورة",status:"الحالة",phone:"الهاتف",username:"اسم المستخدم",full_name:"الاسم",role:"الصلاحية",email:"البريد الإلكتروني",direction:"اتجاه الحركة",duration:"المدة",provider:"الشركة",cost_usd:"الكلفة بالدولار",sell_price_lbp:"سعر البيع بالليرة",months_count:"عدد الأشهر",days_count:"عدد الأيام",notes:"ملاحظات"};
+ const clean=v=>{if(Array.isArray(v))return v.map(clean);if(v&&typeof v==="object"){const o={};for(const [k,x] of Object.entries(v))o[k]=(["image_url","invoice_image_url","photo_url","avatar_url"].includes(k.toLowerCase())&&typeof x==="string"&&x.startsWith("data:image/"))?"[الصورة محفوظة]":clean(x);return o;}return typeof v==="string"&&v.startsWith("data:image/")?"[الصورة محفوظة]":v;};
+ const val=(k,v)=>{if(v==null||v==="")return "—";if(k==="active")return v?"نشط":"غير نشط";if(k==="tracking_type")return ({quantity:"كمية",imei:"IMEI",serial:"Serial"})[v]||String(v);if(k==="protector_type")return ({standard:"عادي",machine_cut:"قصّ ماكينة"})[v]||String(v);if(["image_url","invoice_image_url","photo_url","avatar_url"].includes(k))return "الصورة محفوظة";if(typeof v==="boolean")return v?"نعم":"لا";if(typeof v==="number"&&/price|amount|cost|usd|lbp/i.test(k))return v.toLocaleString("en-US",{maximumFractionDigits:2});if(typeof v==="object")return JSON.stringify(clean(v));return String(v);};
+ const snapshot=o=>{if(!o||typeof o!=="object")return '<p class="muted">لا توجد بيانات</p>';return '<div style="display:grid;gap:7px">'+Object.entries(clean(o)).filter(([k])=>!["id","created_by","created_at","updated_at","updated_by"].includes(k)).map(([k,v])=>'<div style="display:flex;justify-content:space-between;gap:12px;padding:8px;border-bottom:1px solid var(--border,#334155)"><span class="muted">'+esc(labels[k]||k)+'</span><b style="text-align:left;overflow-wrap:anywhere">'+esc(val(k,v))+'</b></div>').join("")+'</div>';};
+ const summary=(a,b)=>{if(!a)return "إضافة سجل جديد.";if(!b)return "حذف السجل.";const keys=[...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>!["id","created_at","created_by","updated_at","updated_by","image_url","invoice_image_url","photo_url","avatar_url"].includes(k));const changed=keys.filter(k=>JSON.stringify(a[k]??null)!==JSON.stringify(b[k]??null));return changed.length?changed.slice(0,8).map(k=>(labels[k]||k)+": «"+val(k,a[k])+"» ← «"+val(k,b[k])+"»").join(" · "):"تم تسجيل التعديل.";};
  h.innerHTML='<div class="panel"><div class="sectionhead"><h2>سجلّ الرقابة السري</h2><span class="tag">لصاحب الصلاحية فقط</span></div><p class="muted">يسجّل تلقائياً التغييرات التي تصل إلى قاعدة البيانات، بما فيها تغييرات المدير. السجل غير قابل للتعديل أو الحذف من التطبيق.</p><div class="formgrid"><div><label>بحث باسم الجدول أو المستخدم أو رقم السجل</label><input id="auditSearch" placeholder="اكتب للبحث..."></div><div><label>نوع العملية</label><select id="auditAction"><option value="">كل العمليات</option><option value="insert">إضافة</option><option value="update">تعديل</option><option value="delete">حذف</option></select></div><div><label>من تاريخ</label><input id="auditFrom" type="date"></div><div><label>إلى تاريخ</label><input id="auditTo" type="date"></div></div><div class="actions"><button class="btn ghost" id="auditRefresh">تحديث السجل</button><span class="muted" id="auditCount"></span></div></div><div id="auditRows"></div>';
- const draw=()=>{
-  const q=$("auditSearch").value.trim().toLowerCase(),act=$("auditAction").value,from=$("auditFrom").value,to=$("auditTo").value;
-  const filtered=(rows||[]).filter(x=>{
-   const actor=actorMap[x.actor_user_id]||"عملية نظام";
-   const day=String(x.created_at||"").slice(0,10);
-   return (!q||(actor+" "+x.target_type+" "+(x.target_id||"")).toLowerCase().includes(q))&&(!act||x.action===act)&&(!from||day>=from)&&(!to||day<=to);
-  });
-  $("auditCount").textContent="عدد السجلات: "+filtered.length+" من آخر "+(rows||[]).length;
-  $("auditRows").innerHTML=filtered.length?filtered.map(x=>{
-   const actor=actorMap[x.actor_user_id]||"النظام / عملية داخلية";
-   const details=x.details||{};
-   const changed=Array.isArray(details.changed_fields)?details.changed_fields.join("، "):"";
-   return '<div class="panel"><div class="sectionhead"><b>'+esc(actionNames[x.action]||x.action)+' — '+esc(x.target_type)+'</b><span class="tag">'+esc(new Date(x.created_at).toLocaleString("ar-LB"))+'</span></div><div class="muted">المستخدم: '+esc(actor)+' · رقم السجل: '+esc(x.target_id||"—")+(details.branch_id?' · الفرع: '+esc(details.branch_id):"")+'</div>'+(changed?'<p class="muted">الحقول المتغيّرة: '+esc(changed)+'</p>':"")+'<details><summary>عرض التفاصيل قبل وبعد التعديل</summary><div class="formgrid"><div><label>قبل</label><pre style="white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1727;padding:12px;border-radius:10px">'+escJson(details.before)+'</pre></div><div><label>بعد</label><pre style="white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1727;padding:12px;border-radius:10px">'+escJson(details.after)+'</pre></div></div></details></div>';
-  }).join(""):'<div class="panel notice">ما في سجلات مطابقة للبحث.</div>';
- };
- ["auditSearch","auditAction","auditFrom","auditTo"].forEach(id=>$(id).addEventListener(id==="auditSearch"?"input":"change",draw));
- $("auditRefresh").onclick=()=>renderPage("audit");
- draw();
+ const draw=()=>{const q=$("auditSearch").value.trim().toLowerCase(),act=$("auditAction").value,from=$("auditFrom").value,to=$("auditTo").value;const filtered=(rows||[]).filter(x=>{const who=actors[x.actor_user_id]||"عملية نظام",day=String(x.created_at||"").slice(0,10);return (!q||(who+" "+x.target_type+" "+(x.target_id||"")).toLowerCase().includes(q))&&(!act||x.action===act)&&(!from||day>=from)&&(!to||day<=to);});$("auditCount").textContent="عدد السجلات: "+filtered.length+" من آخر "+(rows||[]).length;$("auditRows").innerHTML=filtered.length?filtered.map(x=>{const who=actors[x.actor_user_id]||"النظام / عملية داخلية",d=x.details||{};return '<div class="panel"><div class="sectionhead"><b>'+esc(actions[x.action]||x.action)+' — '+esc(x.target_type)+'</b><span class="tag">'+esc(new Date(x.created_at).toLocaleString("ar-LB"))+'</span></div><div class="muted">المستخدم: '+esc(who)+' · رقم السجل: '+esc(x.target_id||"—")+'</div><div style="margin:12px 0;padding:12px;border-radius:10px;background:var(--surface-2,rgba(127,127,127,.10))"><b>ملخّص التغيير</b><p style="margin:6px 0 0">'+esc(summary(d.before,d.after))+'</p></div><details><summary>مقارنة واضحة قبل وبعد التعديل</summary><div class="formgrid" style="margin-top:12px"><div><label>قبل التعديل</label>'+snapshot(d.before)+'</div><div><label>بعد التعديل</label>'+snapshot(d.after)+'</div></div></details><details style="margin-top:8px"><summary>البيانات التقنية الخام</summary><div class="formgrid"><div><label>قبل</label><pre style="white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1727;padding:12px;border-radius:10px">'+esc(JSON.stringify(clean(d.before||{}),null,2))+'</pre></div><div><label>بعد</label><pre style="white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1727;padding:12px;border-radius:10px">'+esc(JSON.stringify(clean(d.after||{}),null,2))+'</pre></div></div></details></div>';}).join(""):'<div class="panel notice">ما في سجلات مطابقة للبحث.</div>';};
+ ["auditSearch","auditAction","auditFrom","auditTo"].forEach(id=>$(id).addEventListener(id==="auditSearch"?"input":"change",draw));$("auditRefresh").onclick=()=>renderPage("audit");draw();
 }
-
 async function reportsPage(h){
  if(!can("reports.view"))throw Error("لا تملك صلاحية التقارير");
  if(!branchId)throw Error("اختار فرعاً أولاً");
