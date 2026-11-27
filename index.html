@@ -689,7 +689,18 @@ async function auditPage(h){
   actorMap=Object.fromEntries((actors||[]).map(x=>[x.id,x.full_name||x.username||x.id]));
  }
  const actionNames={insert:"إضافة",update:"تعديل",delete:"حذف",account:"حساب",approve_return:"اعتماد مرتجع"};
- const escJson=v=>esc(JSON.stringify(v??{},null,2));
+ const sanitizeAuditDisplay=value=>{
+  if(Array.isArray(value))return value.map(sanitizeAuditDisplay);
+  if(value&&typeof value==="object"){
+   const out={};
+   for(const [key,val] of Object.entries(value)){
+    out[key]=(["image_url","invoice_image_url","photo_url","avatar_url"].includes(key.toLowerCase())&&typeof val==="string"&&val.startsWith("data:image/"))?"[تم إخفاء بيانات الصورة]":sanitizeAuditDisplay(val);
+   }
+   return out;
+  }
+  return typeof value==="string"&&value.startsWith("data:image/")?"[تم إخفاء بيانات الصورة]":value;
+ };
+ const escJson=v=>esc(JSON.stringify(sanitizeAuditDisplay(v??{}),null,2));
  h.innerHTML='<div class="panel"><div class="sectionhead"><h2>سجلّ الرقابة السري</h2><span class="tag">لصاحب الصلاحية فقط</span></div><p class="muted">يسجّل تلقائياً التغييرات التي تصل إلى قاعدة البيانات، بما فيها تغييرات المدير. السجل غير قابل للتعديل أو الحذف من التطبيق.</p><div class="formgrid"><div><label>بحث باسم الجدول أو المستخدم أو رقم السجل</label><input id="auditSearch" placeholder="اكتب للبحث..."></div><div><label>نوع العملية</label><select id="auditAction"><option value="">كل العمليات</option><option value="insert">إضافة</option><option value="update">تعديل</option><option value="delete">حذف</option></select></div><div><label>من تاريخ</label><input id="auditFrom" type="date"></div><div><label>إلى تاريخ</label><input id="auditTo" type="date"></div></div><div class="actions"><button class="btn ghost" id="auditRefresh">تحديث السجل</button><span class="muted" id="auditCount"></span></div></div><div id="auditRows"></div>';
  const draw=()=>{
   const q=$("auditSearch").value.trim().toLowerCase(),act=$("auditAction").value,from=$("auditFrom").value,to=$("auditTo").value;
