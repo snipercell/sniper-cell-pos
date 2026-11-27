@@ -276,7 +276,15 @@ async function home(h){const currentBranch=branches.find(b=>b.id===branchId);con
  if(branchId&&(can("cash.view")||can("cash.create")||can("reports.view"))){
  const {data:openingBalance,error:openingBalanceError}=await db.from("daily_cash_registers").select("*").eq("branch_id",branchId).order("register_date",{ascending:false}).limit(1).maybeSingle();
  if(openingBalanceError)throw openingBalanceError;
- if(openingBalance){const openingPanel=document.createElement("div");openingPanel.className="panel";openingPanel.style.whiteSpace="pre-wrap";openingPanel.textContent="الأرصدة الافتتاحية — آخر تسجيل: "+openingBalance.register_date+"\nالصندوق USD: $"+Number(openingBalance.opening_usd||0).toFixed(2)+"\nالصندوق LBP: "+Number(openingBalance.opening_lbp||0).toLocaleString("en-US")+" ل.ل\nTop Up USD: $"+Number(openingBalance.opening_topup_usd||0).toFixed(2)+"\nTop Up LBP: "+Number(openingBalance.opening_topup_lbp||0).toLocaleString("en-US")+" ل.ل";h.appendChild(openingPanel);}
+ const openingPanel=document.createElement("div");openingPanel.className="panel";
+ const openingTitle=document.createElement("h2");openingTitle.textContent="الأرصدة الافتتاحية";openingPanel.appendChild(openingTitle);
+ const openingDate=document.createElement("p");openingDate.className="muted";openingDate.textContent=openingBalance?"آخر تسجيل: "+openingBalance.register_date:"ما تسجّل رصيد افتتاحي بعد";openingPanel.appendChild(openingDate);
+ const openingGrid=document.createElement("div");openingGrid.className="grid";
+ const openingValues=openingBalance?[["الصندوق بالدولار","$"+Number(openingBalance.opening_usd||0).toFixed(2)],["الصندوق بالليرة",Number(openingBalance.opening_lbp||0).toLocaleString("en-US")+" ل.ل"],["Top Up بالدولار","$"+Number(openingBalance.opening_topup_usd||0).toFixed(2)],["Top Up بالليرة",Number(openingBalance.opening_topup_lbp||0).toLocaleString("en-US")+" ل.ل"]]:[["الصندوق بالدولار","—"],["الصندوق بالليرة","—"],["Top Up بالدولار","—"],["Top Up بالليرة","—"]];
+ openingValues.forEach(([label,value])=>{const item=document.createElement("div");const caption=document.createElement("div");caption.className="muted";caption.textContent=label;const amount=document.createElement("h2");amount.textContent=value;item.append(caption,amount);openingGrid.appendChild(item);});
+ openingPanel.appendChild(openingGrid);
+ if(can("reports.view")){const reportButton=document.createElement("button");reportButton.type="button";reportButton.className="btn";reportButton.textContent="فتح التقرير اليومي";reportButton.onclick=()=>renderPage("reports");openingPanel.appendChild(reportButton);}
+ h.appendChild(openingPanel);
 }
  $("branchPick").onchange=e=>{branchId=e.target.value;renderPage("home")}}
 async function admin(h){let html=can("branches.manage")?'<div class="panel"><div class="sectionhead"><h2>إنشاء فرع جديد</h2><span class="tag">إدارة الفروع</span></div><div class="formgrid"><div class="field"><label>اسم الفرع</label><input id="newBranch" placeholder="اكتب اسم الفرع"></div></div><div class="actions"><button class="btn" id="addBranch">إنشاء الفرع وتعييني عليه</button></div><div id="adminMsg" class="msg"></div></div>':"";
@@ -777,7 +785,7 @@ async function reportsPage(h){
     const readOnly=document.createElement("p");readOnly.textContent="عرض فقط — لا يمكن تعديل الفاتورة";box.appendChild(readOnly);
     const summary=document.createElement("p");summary.textContent="التاريخ: "+new Date(head.created_at).toLocaleString("ar-LB")+" | "+(type==="sale"?"العميل: "+(head.customer_name||"—"):"المورد: "+(head.supplier?.name||"—"))+" | الإجمالي: $"+Number(head.total_usd||0).toFixed(2)+(type==="sale"?" | "+Number(head.total_lbp||0).toLocaleString("en-US")+" ل.ل":"");box.appendChild(summary);
     if(type==="sale"){const pay=document.createElement("p");pay.textContent="الدفعات: "+payments.map(x=>x.currency+" "+Number(x.amount||0).toLocaleString("en-US")).join(" — ");box.appendChild(pay);}
-    const table=document.createElement("table");table.innerHTML="<thead><tr><th>الصنف</th><th>الباركود</th><th>الكمية</th><th>"+(type==="sale"?"سعر البيع":"كلفة الوحدة")+"</th><th>الإجمالي</th></tr></thead><tbody></tbody>";const tbody=table.querySelector("tbody");
+    const table=document.createElement("table");table.innerHTML="<thead><tr><th>الصنف</th><th>الباركود</th><th>الكمية</th><th>"+(type==="sale"?"سعر البيع":"كلفة الوحدة")+"</th><th>الإجمالي</th>"+(type==="sale"?"<th>IMEI / Serial</th>":"")+"</tr></thead><tbody></tbody>";const tbody=table.querySelector("tbody");
     items.forEach(x=>{const tr=document.createElement("tr");const vals=[x.product?.name||x.description||"—",x.product?.barcode||"—",String(x.quantity||0),"$"+Number(type==="sale"?x.unit_price_usd:(x.unit_cost_usd||0)).toFixed(2),"$"+Number(x.line_total_usd||0).toFixed(2)];if(type==="sale")vals.push(x.serial_number||"—");vals.forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td)});tbody.appendChild(tr)});
     box.appendChild(table);
    }catch(err){box.textContent=err.message||"تعذّر تحميل الفاتورة";}
