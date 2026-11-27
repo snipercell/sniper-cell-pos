@@ -701,7 +701,7 @@ async function reportsPage(h){
  const shift=(day,n)=>{const d=new Date(day+"T12:00:00");d.setDate(d.getDate()+n);return dateKey(d)};
  const balances=(opening,day)=>{
   const m=movement(day);
-  return {usd:Number(opening.usd||0)+m.usdIn-m.usdOut,lbp:Number(opening.lbp||0)+m.lbpIn-m.lbpOut};
+  return {cashUsd:Number(opening.cashUsd||0)+m.usdIn-(m.usdOut-m.usdTopupCost),cashLbp:Number(opening.cashLbp||0)+m.lbpIn-m.lbpOut,topUsd:Number(opening.topUsd||0)-m.usdTopupCost,topLbp:Number(opening.topLbp||0)};
  };
  const openingFor=day=>{
   const existing=regMap.get(day);
@@ -709,20 +709,21 @@ async function reportsPage(h){
   const previous=shift(day,-1);
   let prior=[...registers].filter(x=>x.register_date<day).sort((a,b)=>a.register_date.localeCompare(b.register_date)).pop();
   if(!prior)return {cashUsd:0,cashLbp:0,topUsd:0,topLbp:0,row:null};
-  let opening={usd:Number(prior.opening_usd||0)+Number(prior.opening_topup_usd||0),lbp:Number(prior.opening_lbp||0)+Number(prior.opening_topup_lbp||0)};
+  let opening={cashUsd:Number(prior.opening_usd||0),cashLbp:Number(prior.opening_lbp||0),topUsd:Number(prior.opening_topup_usd||0),topLbp:Number(prior.opening_topup_lbp||0)};
   let cursor=prior.register_date;
   while(cursor<=previous){
    const r=regMap.get(cursor);
-   if(r)opening={usd:Number(r.opening_usd||0)+Number(r.opening_topup_usd||0),lbp:Number(r.opening_lbp||0)+Number(r.opening_topup_lbp||0)};
+   if(r)opening={cashUsd:Number(r.opening_usd||0),cashLbp:Number(r.opening_lbp||0),topUsd:Number(r.opening_topup_usd||0),topLbp:Number(r.opening_topup_lbp||0)};
    opening=balances(opening,cursor);
    if(cursor===previous)break;
    cursor=shift(cursor,1);
   }
-  return {cashUsd:opening.usd,cashLbp:opening.lbp,topUsd:0,topLbp:0,row:null};
+  return {...opening,row:null};
  };
  const render=day=>{
   const m=movement(day),o=openingFor(day),openingUsd=o.cashUsd+o.topUsd,openingLbp=o.cashLbp+o.topLbp;
-  const close=balances({usd:openingUsd,lbp:openingLbp},day);
+  const close=balances({cashUsd:o.cashUsd,cashLbp:o.cashLbp,topUsd:o.topUsd,topLbp:o.topLbp},day);
+  const closingUsd=close.cashUsd+close.topUsd,closingLbp=close.cashLbp+close.topLbp;
   const usdPending=sum(byDate(expenses,day),"amount",x=>x.status==="pending"&&x.currency==="USD"),lbpPending=sum(byDate(expenses,day),"amount",x=>x.status==="pending"&&x.currency==="LBP");
   const topupProfitUsd=m.usdTopup-m.usdTopupCost;
   const detailRows={
@@ -743,7 +744,77 @@ async function reportsPage(h){
   (can("cash.create")?'<button class="btn green" id="saveOpening" style="margin-top:12px">حفظ الأرصدة الافتتاحية</button><div id="openingMsg" class="msg"></div>':'<p class="muted">تحتاج صلاحية حركة الصندوق لتعديل الرصيد الافتتاحي.</p>')+'</div>'+
   '<div class="grid"><div class="panel"><div class="muted">إجمالي الافتتاحي USD</div><h2>$'+openingUsd.toFixed(2)+'</h2><div class="muted">يشمل Top Up: $'+o.topUsd.toFixed(2)+'</div></div><div class="panel"><div class="muted">إجمالي الافتتاحي LBP</div><h2>'+openingLbp.toLocaleString("en-US")+' ل.ل</h2><div class="muted">يشمل Top Up: '+o.topLbp.toLocaleString("en-US")+' ل.ل</div></div></div>'+
   '<div class="panel"><h2>حركة اليوم</h2><div class="grid"><div><div class="muted">وارد USD</div><b>$'+m.usdIn.toFixed(2)+'</b></div><div><div class="muted">صادر USD</div><b>$'+m.usdOut.toFixed(2)+'</b></div><div><div class="muted">وارد LBP</div><b>'+m.lbpIn.toLocaleString("en-US")+' ل.ل</b></div><div><div class="muted">صادر LBP</div><b>'+m.lbpOut.toLocaleString("en-US")+' ل.ل</b></div></div></div>'+
-  '<div class="grid"><div class="panel"><div class="muted">إقفال الصندوق USD</div><h2>$'+close.usd.toFixed(2)+'</h2></div><div class="panel"><div class="muted">إقفال الصندوق LBP</div><h2>'+close.lbp.toLocaleString("en-US")+' ل.ل</h2></div></div>'+
+  '<div class="grid"><div class="panel"><div class="muted">إقفال الصندوق الإجمالي USD</div><h2></div>'+
+  '<div class="panel"><h2>ملخص التعبئة</h2><div class="grid"><div><div class="muted">بيع دولارات · الكلفة</div><b>$'+sum(m.dollars,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.dollars,"sell_price_usd").toFixed(2)+' · '+sum(m.dollars,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div><div><div class="muted">بيع أشهر · الكلفة</div><b>$'+sum(m.months,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.months,"sell_price_usd").toFixed(2)+' · '+sum(m.months,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div><div><div class="muted">بيع كروت · الكلفة</div><b>$'+sum(m.cards,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.cards,"sell_price_usd").toFixed(2)+' · '+sum(m.cards,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div></div></div>'+
+  '<div class="panel"><div class="sectionhead"><h2>ملخص اليوم</h2><span class="tag">'+(m.ds.length+m.dp.length+m.de.length+m.dt.length+m.dc.length)+' حركة</span></div><div class="grid">'+
+  '<button type="button" class="panel" data-report-detail="sales"><div class="muted">المبيعات المكتملة</div><h2>'+m.ds.length+' فاتورة</h2><b>$'+sum(m.ds,"total_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="purchases"><div class="muted">المشتريات</div><h2>'+m.dp.length+' فاتورة</h2><b>$'+m.usdPurchase.toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="expenses"><div class="muted">المصاريف المعتمدة</div><h2>$'+m.usdExpenses.toFixed(2)+'</h2><div class="muted">'+m.lbpExpenses.toLocaleString("en-US")+' ل.ل · بانتظار: $'+usdPending.toFixed(2)+' / '+lbpPending.toLocaleString("en-US")+' ل.ل</div></button>'+
+  '<button type="button" class="panel" data-report-detail="dollars"><div class="muted">بيع دولارات</div><h2>'+m.dollars.length+' عملية</h2><b>كلفة $'+sum(m.dollars,"cost_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="months"><div class="muted">بيع أشهر</div><h2>'+m.months.length+' عملية</h2><b>كلفة $'+sum(m.months,"cost_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="cards"><div class="muted">بيع كروت</div><h2>'+m.cards.length+' عملية</h2><b>كلفة $'+sum(m.cards,"cost_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="cash"><div class="muted">ربح التعبئة بالدولار</div><h2>$'+topupProfitUsd.toFixed(2)+'</h2><div class="muted">قبل المصاريف العامة، ولا يشمل ربح البضاعة</div></button></div></div>'+
+  '<div class="panel" id="reportDetails"><div class="muted">اكبس على أي قسم لعرض التفاصيل.</div></div>'+
+  '<div class="panel notice">إقفال الصندوق محسوب من المقبوضات الفعلية، التعبئة، المشتريات، المصاريف المعتمدة وحركات الصندوق والمرتجعات. ربح الأجهزة والإكسسوارات النهائي يحتاج حفظ كلفة القطعة وقت البيع؛ لذلك ما رح أعرض رقم ربح إجمالي مضلّل. المصاريف المعلّقة لا تُخصم قبل اعتمادها.</div>';
+  h.querySelectorAll("[data-report-detail]").forEach(btn=>btn.onclick=()=>{const key=btn.dataset.reportDetail,rows=detailRows[key]||[];h.querySelectorAll("[data-report-detail]").forEach(x=>x.style.outline=x===btn?"2px solid var(--accent)":"");$("reportDetails").innerHTML='<div class="sectionhead"><h2>'+titles[key]+'</h2><span class="tag">'+rows.length+' عملية</span></div><div class="tablewrap"><table><thead><tr>'+detailHeaders[key]+'</tr></thead><tbody>'+(rows.length?rows.join(""):'<tr><td colspan="6" class="muted">ما في عمليات بهيدا التاريخ</td></tr>')+'</tbody></table></div>'});
+  $("showReportDate").onclick=()=>{const v=$("reportDate").value;if(v)render(v)};
+  $("reportDate").onchange=()=>{if($("reportDate").value)render($("reportDate").value)};
+  if($("saveOpening"))$("saveOpening").onclick=async()=>{
+   const b=$("saveOpening");b.disabled=true;
+   try{
+    const vals={opening_usd:Number($("openUsd").value),opening_lbp:Number($("openLbp").value),opening_topup_usd:Number($("openTopUsd").value),opening_topup_lbp:Number($("openTopLbp").value)};
+    if(Object.values(vals).some(v=>!Number.isFinite(v)||v<0))throw Error("أدخل أرصدة صحيحة وغير سالبة");
+    const payload={branch_id:branchId,register_date:day,...vals,updated_by:user.id};
+    let result;
+    if(o.row)result=await db.from("daily_cash_registers").update(payload).eq("id",o.row.id);
+    else result=await db.from("daily_cash_registers").insert({...payload,created_by:user.id});
+    if(result.error)throw result.error;
+    await reportsPage(h);
+    const notice=$("openingMsg");if(notice)msg("openingMsg","تم حفظ رصيد اليوم. سيُرحّل إقفال اليوم تلقائياً لليوم التالي.",true);
+   }catch(err){msg("openingMsg",err.message)}finally{b.disabled=false}
+  };
+ };
+ render(today);
+}
+async function settingsPage(h){
+ if(!can("settings.manage"))throw Error("لا تملك صلاحية الإعدادات");
+ const [{data:r,error},{data:brand,error:brandError}]=await Promise.all([
+  db.from("branch_fx_rates").select("*").eq("branch_id",branchId).maybeSingle(),
+  db.from("app_branding").select("app_name,logo_data_url").eq("singleton",true).maybeSingle()
+ ]);
+ if(error)throw error;if(brandError)throw brandError;
+ appBranding={app_name:brand?.app_name||"نظام نقاط البيع",logo_data_url:brand?.logo_data_url||null};
+ h.innerHTML='<div class="panel"><h2>اسم البرنامج والشعار</h2><p class="muted">غيّر الاسم وارفع شعارك ليظهر في شاشة الدخول والقائمة الرئيسية.</p><label>اسم البرنامج</label><input id="brandName" maxlength="80" value="'+esc(appBranding.app_name)+'" placeholder="اكتب اسم البرنامج"><label>الشعار</label><input id="brandLogo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"><div id="brandPreview" style="margin-top:12px;min-height:64px;display:flex;align-items:center;gap:12px">'+(appBranding.logo_data_url?'<img src="'+appBranding.logo_data_url+'" style="width:72px;height:72px;object-fit:contain;background:#fff;border-radius:10px;padding:5px">':'<span class="muted">لم يتم اختيار شعار بعد</span>')+'</div><div class="actions"><button class="btn" id="saveBrand">حفظ الاسم والشعار</button><button class="btn ghost" id="removeBrand">إزالة الشعار</button></div><div id="brandMsg" class="msg"></div></div><div class="panel"><h2>سعر الصرف للفرع الحالي</h2><label>عدد الليرات لكل دولار</label><input id="fxRate" type="number" min="1" step="1" value="'+(r?.lbp_per_usd||"")+'"><button class="btn" id="saveFx">حفظ سعر الصرف</button><div id="fxMsg" class="msg"></div></div>';
+ let selectedLogo=appBranding.logo_data_url;
+ $("brandLogo").onchange=async()=>{const file=$("brandLogo").files?.[0];if(!file)return;if(!file.type.startsWith("image/")){msg("brandMsg","اختر ملف صورة صالحاً");return}if(file.size>350*1024){msg("brandMsg","حجم الشعار كبير. اختر صورة لا تتجاوز 350 كيلوبايت.");$("brandLogo").value="";return}const reader=new FileReader();reader.onload=()=>{selectedLogo=String(reader.result);$("brandPreview").innerHTML='<img src="'+selectedLogo+'" style="width:72px;height:72px;object-fit:contain;background:#fff;border-radius:10px;padding:5px">'};reader.onerror=()=>msg("brandMsg","تعذّرت قراءة الصورة");reader.readAsDataURL(file)};
+ $("removeBrand").onclick=()=>{selectedLogo=null;$("brandLogo").value="";$("brandPreview").innerHTML='<span class="muted">سيتم إزالة الشعار عند الحفظ</span>'};
+ $("saveBrand").onclick=async()=>{const name=$("brandName").value.trim();if(!name){msg("brandMsg","اكتب اسم البرنامج أولاً");return}const b=$("saveBrand");b.disabled=true;try{const {error}=await db.from("app_branding").upsert({singleton:true,app_name:name,logo_data_url:selectedLogo,updated_at:new Date().toISOString()},{onConflict:"singleton"});if(error)throw error;appBranding={app_name:name,logo_data_url:selectedLogo};applyBranding();msg("brandMsg","تم حفظ الاسم والشعار وتطبيقهما على البرنامج",true)}catch(e){msg("brandMsg","تعذّر الحفظ: "+e.message)}finally{b.disabled=false}};
+ $("saveFx").onclick=async()=>{try{const {error}=await db.from("branch_fx_rates").upsert({branch_id:branchId,lbp_per_usd:Number($("fxRate").value),updated_by:user.id});if(error)throw error;msg("fxMsg","تم حفظ سعر الصرف",true)}catch(e){msg("fxMsg",e.message)}};
+}
+loadBranding();
+ const recoveryRequested=initialRecoveryRequested;if(recoveryRequested){showRecovery(null);msg("recoveryMsg","عم نتحقق من رابط الاستعادة...");}db.auth.getSession().then(async({data,error})=>{if(recoveryRequested){if(data?.session){showRecovery(data.session);msg("recoveryMsg","أدخل كلمة المرور الجديدة ثم احفظها.",true)}else{showRecovery(null);msg("recoveryMsg","تعذّر تأكيد رابط الاستعادة. قد يكون الرابط منتهي الصلاحية أو استُخدم سابقاً.");}return}if(data.session?.user){try{await loadContext(data.session.user)}catch(e){await db.auth.signOut();$("loginMsg").textContent=e.message}}});
+</script>
+<script>
+(function(){
+ const root=document.documentElement;
+ const button=document.getElementById("themeToggle");
+ let theme="dark";
+ try{theme=localStorage.getItem("pos-theme")==="light"?"light":"dark"}catch(_){}
+ function applyTheme(){
+  root.setAttribute("data-theme",theme);
+  if(button){button.textContent=theme==="dark"?"☀️ الوضع الفاتح":"🌙 الوضع الداكن";button.setAttribute("aria-pressed",String(theme==="light"));}
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta)meta.setAttribute("content",theme==="dark"?"#080f1c":"#f1f5fb");
+ }
+ applyTheme();
+ if(button)button.addEventListener("click",function(){
+  theme=theme==="dark"?"light":"dark";
+  try{localStorage.setItem("pos-theme",theme)}catch(_){}
+  applyTheme();
+ });
+})();
+</script></body></html>
++closingUsd.toFixed(2)+'</h2><div class="muted">منه رصيد Top Up: $ '+close.topUsd.toFixed(2)+'</div></div><div class="panel"><div class="muted">إقفال الصندوق الإجمالي LBP</div><h2>'+closingLbp.toLocaleString("en-US")+' ل.ل</h2><div class="muted">منه رصيد Top Up: '+close.topLbp.toLocaleString("en-US")+' ل.ل</div></div></div>'+
   '<div class="panel"><h2>ملخص التعبئة</h2><div class="grid"><div><div class="muted">بيع دولارات · الكلفة</div><b>$'+sum(m.dollars,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.dollars,"sell_price_usd").toFixed(2)+' · '+sum(m.dollars,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div><div><div class="muted">بيع أشهر · الكلفة</div><b>$'+sum(m.months,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.months,"sell_price_usd").toFixed(2)+' · '+sum(m.months,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div><div><div class="muted">بيع كروت · الكلفة</div><b>$'+sum(m.cards,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.cards,"sell_price_usd").toFixed(2)+' · '+sum(m.cards,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div></div></div>'+
   '<div class="panel"><div class="sectionhead"><h2>ملخص اليوم</h2><span class="tag">'+(m.ds.length+m.dp.length+m.de.length+m.dt.length+m.dc.length)+' حركة</span></div><div class="grid">'+
   '<button type="button" class="panel" data-report-detail="sales"><div class="muted">المبيعات المكتملة</div><h2>'+m.ds.length+' فاتورة</h2><b>$'+sum(m.ds,"total_usd").toFixed(2)+'</b></button>'+
