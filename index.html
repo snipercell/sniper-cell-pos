@@ -386,7 +386,7 @@ async function returnsPage(h){
   invoiceEl.innerHTML='<option value="">اختار الفاتورة</option>'+list.map(x=>'<option value="'+x.id+'">'+esc(x.invoice_no||"بدون رقم")+' — '+new Date(x.created_at).toLocaleDateString("ar-LB")+(x.customer_name?" — "+esc(x.customer_name):"")+'</option>').join("");
   itemEl.innerHTML='<option value="">اختار الصنف</option>';if($("retEstimate"))$("retEstimate").textContent="اختار الفاتورة والصنف لاحتساب قيمة المرتجع.";
  };
- typeEl?.addEventListener("change",fillInvoices);fillInvoices();
+ typeEl?.addEventListener("change",fillInvoices);if(typeEl)fillInvoices();
  invoiceEl?.addEventListener("change",async()=>{
   itemEl.innerHTML='<option value="">جارٍ تحميل الأصناف...</option>';
   try{
