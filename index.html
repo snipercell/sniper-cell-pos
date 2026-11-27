@@ -691,7 +691,7 @@ async function reportsPage(h){
   const dollars=dt.filter(x=>x.category==="dollars"||x.category==="days"),months=dt.filter(x=>x.category==="months"),cards=dt.filter(x=>(x.category||"cards")==="cards");
   const usdSales=sum(sp,"amount",x=>x.currency==="USD"),lbpSales=sum(sp,"amount",x=>x.currency==="LBP");
   const usdTopup=sum(dt,"sell_price_usd"),lbpTopup=sum(dt,"sell_price_lbp",x=>x.sell_currency==="LBP");
-  const usdTopupCost=sum(dt,"cost_usd");
+  const usdTopupCost=sum(dt,"cost_usd",x=>x.sell_currency==="USD");
   const usdCashIn=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="in"),usdCashOut=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="out");
   const lbpCashIn=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="in"),lbpCashOut=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="out");
   const usdExpenses=sum(de,"amount",x=>x.currency==="USD"),lbpExpenses=sum(de,"amount",x=>x.currency==="LBP");
