@@ -675,25 +675,40 @@ async function reportsPage(h){
   db.from("cash_transactions").select("direction,amount,currency,created_at").eq("branch_id",branchId)
  ]);
  if(se)throw se;if(pe)throw pe;if(ee)throw ee;if(te)throw te;if(ce)throw ce;
- const sum=(arr,key,filter=()=>true)=>arr.filter(filter).reduce((n,x)=>n+Number(x[key]||0),0);
  const sales=s||[],purchases=p||[],expenses=e||[],topups=t||[],cash=c||[];
- const usdApproved=sum(expenses,"amount",x=>x.status==="approved"&&x.currency==="USD");
- const lbpApproved=sum(expenses,"amount",x=>x.status==="approved"&&x.currency==="LBP");
- const usdPending=sum(expenses,"amount",x=>x.status==="pending"&&x.currency==="USD");
- const lbpPending=sum(expenses,"amount",x=>x.status==="pending"&&x.currency==="LBP");
- const usdIn=sum(cash,"amount",x=>x.currency==="USD"&&x.direction==="in");
- const usdOut=sum(cash,"amount",x=>x.currency==="USD"&&x.direction==="out");
- const lbpIn=sum(cash,"amount",x=>x.currency==="LBP"&&x.direction==="in");
- const lbpOut=sum(cash,"amount",x=>x.currency==="LBP"&&x.direction==="out");
- h.innerHTML='<div class="panel"><div class="sectionhead"><h2>ملخص الفرع — كل الفترة</h2><span class="tag">'+esc(branches.find(b=>b.id===branchId)?.name||"")+'</span></div><p class="muted">الأرقام مفصولة حسب العملة، ولا يتم جمع الدولار والليرة بسعر صرف غير موثّق.</p></div>'+
- '<div class="grid"><div class="panel"><div class="muted">فواتير البيع المكتملة</div><h2>'+sales.length+'</h2><b>$'+sum(sales,"total_usd").toFixed(2)+'</b><div class="muted">إجمالي الدولار المسجل في الفواتير</div></div>'+
- '<div class="panel"><div class="muted">فواتير المشتريات</div><h2>'+purchases.length+'</h2><b>$'+sum(purchases,"total_usd").toFixed(2)+'</b><div class="muted">قيمة الشراء المسجلة</div></div>'+
- '<div class="panel"><div class="muted">مصاريف معتمدة — USD</div><h2>$'+usdApproved.toFixed(2)+'</h2><div class="muted">مصاريف بانتظار المراجعة: $'+usdPending.toFixed(2)+'</div></div>'+
- '<div class="panel"><div class="muted">مصاريف معتمدة — LBP</div><h2>'+lbpApproved.toLocaleString("en-US")+' ل.ل</h2><div class="muted">مصاريف بانتظار المراجعة: '+lbpPending.toLocaleString("en-US")+' ل.ل</div></div>'+
- '<div class="panel"><div class="muted">عمليات التعبئة</div><h2>'+topups.length+'</h2><b>المبيع: $ '+sum(topups,"sell_price_usd").toFixed(2)+'</b><div class="muted">الكلفة: $ '+sum(topups,"cost_usd").toFixed(2)+' · الربح: $ '+(sum(topups,"sell_price_usd")-sum(topups,"cost_usd")).toFixed(2)+'</div><div class="muted">أيام: '+topups.filter(x=>x.category==="days").length+' · أشهر: '+topups.filter(x=>x.category==="months").length+' · كروت: '+topups.filter(x=>(x.category||"cards")==="cards").length+'</div></div>'+
- '<div class="panel"><div class="muted">صافي حركة الصندوق — USD</div><h2>$'+(usdIn-usdOut).toFixed(2)+'</h2><div class="muted">وارد $'+usdIn.toFixed(2)+' · صادر $'+usdOut.toFixed(2)+'</div></div>'+
- '<div class="panel"><div class="muted">صافي حركة الصندوق — LBP</div><h2>'+(lbpIn-lbpOut).toLocaleString("en-US")+' ل.ل</h2><div class="muted">وارد '+lbpIn.toLocaleString("en-US")+' · صادر '+lbpOut.toLocaleString("en-US")+' ل.ل</div></div></div>'+
- '<div class="panel notice">هذا تقرير حركة تشغيلية وليس كشف أرباح نهائياً: قيمة المشتريات قد تبقى ضمن المخزون، ولا تُحسب كلفة البضاعة المباعة أو الربح الصافي إلا بعد ربط تكلفة كل قطعة بالمبيعات.</div>';
+ const dateKey=x=>{const d=new Date(x);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+ const today=dateKey(new Date());
+ const sum=(arr,key,filter=()=>true)=>arr.filter(filter).reduce((n,x)=>n+Number(x[key]||0),0);
+ const render=day=>{
+  const inDay=arr=>arr.filter(x=>dateKey(x.created_at)===day);
+  const ds=inDay(sales),dp=inDay(purchases),de=inDay(expenses),dt=inDay(topups),dc=inDay(cash);
+  const usdApproved=sum(de,"amount",x=>x.status==="approved"&&x.currency==="USD");
+  const lbpApproved=sum(de,"amount",x=>x.status==="approved"&&x.currency==="LBP");
+  const usdPending=sum(de,"amount",x=>x.status==="pending"&&x.currency==="USD");
+  const lbpPending=sum(de,"amount",x=>x.status==="pending"&&x.currency==="LBP");
+  const usdIn=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="in");
+  const usdOut=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="out");
+  const lbpIn=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="in");
+  const lbpOut=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="out");
+  const dollars=dt.filter(x=>x.category==="dollars"||x.category==="days");
+  const months=dt.filter(x=>x.category==="months");
+  const cards=dt.filter(x=>(x.category||"cards")==="cards");
+  h.innerHTML='<div class="panel"><div class="sectionhead"><h2>التقارير اليومية</h2><span class="tag">'+esc(branches.find(b=>b.id===branchId)?.name||"")+'</span></div><p class="muted">اختار أي تاريخ لتشوف حركة هيدا اليوم فقط.</p><div class="formgrid"><div><label>تاريخ التقرير</label><input id="reportDate" type="date" value="'+day+'"></div><div style="display:flex;align-items:end"><button class="btn" id="showReportDate">عرض التقرير</button></div></div></div>'+
+  '<div class="panel"><div class="sectionhead"><h2>تقرير يوم '+new Date(day+"T12:00:00").toLocaleDateString("ar-LB")+'</h2><span class="tag">'+(ds.length+dp.length+de.length+dt.length+dc.length)+' حركة</span></div><p class="muted">كل الأرقام التالية محصورة بالتاريخ المختار، والعملتان معروضتان بشكل منفصل.</p></div>'+
+  '<div class="grid"><div class="panel"><div class="muted">المبيعات المكتملة</div><h2>'+ds.length+' فاتورة</h2><b>$'+sum(ds,"total_usd").toFixed(2)+'</b><div class="muted">'+sum(ds,"total_lbp").toLocaleString("en-US")+' ل.ل</div></div>'+
+  '<div class="panel"><div class="muted">المشتريات</div><h2>'+dp.length+' فاتورة</h2><b>$'+sum(dp,"total_usd").toFixed(2)+'</b></div>'+
+  '<div class="panel"><div class="muted">المصاريف المعتمدة USD</div><h2>$'+usdApproved.toFixed(2)+'</h2><div class="muted">بانتظار الموافقة: $'+usdPending.toFixed(2)+'</div></div>'+
+  '<div class="panel"><div class="muted">المصاريف المعتمدة LBP</div><h2>'+lbpApproved.toLocaleString("en-US")+' ل.ل</h2><div class="muted">بانتظار الموافقة: '+lbpPending.toLocaleString("en-US")+' ل.ل</div></div>'+
+  '<div class="panel"><div class="muted">بيع دولارات</div><h2>'+dollars.length+' عملية</h2><b>المبيع: $'+sum(dollars,"sell_price_usd").toFixed(2)+'</b><div class="muted">كلفة: $'+sum(dollars,"cost_usd").toFixed(2)+' · ربح: $'+(sum(dollars,"sell_price_usd")-sum(dollars,"cost_usd")).toFixed(2)+'</div></div>'+
+  '<div class="panel"><div class="muted">بيع أشهر</div><h2>'+months.length+' عملية</h2><b>المبيع: $'+sum(months,"sell_price_usd").toFixed(2)+'</b><div class="muted">كلفة: $'+sum(months,"cost_usd").toFixed(2)+' · ربح: $'+(sum(months,"sell_price_usd")-sum(months,"cost_usd")).toFixed(2)+'</div></div>'+
+  '<div class="panel"><div class="muted">بيع كروت</div><h2>'+cards.length+' عملية</h2><b>المبيع: $'+sum(cards,"sell_price_usd").toFixed(2)+'</b><div class="muted">كلفة: $'+sum(cards,"cost_usd").toFixed(2)+' · ربح: $'+(sum(cards,"sell_price_usd")-sum(cards,"cost_usd")).toFixed(2)+'</div></div>'+
+  '<div class="panel"><div class="muted">صافي الصندوق USD</div><h2>$'+(usdIn-usdOut).toFixed(2)+'</h2><div class="muted">وارد $'+usdIn.toFixed(2)+' · صادر $'+usdOut.toFixed(2)+'</div></div>'+
+  '<div class="panel"><div class="muted">صافي الصندوق LBP</div><h2>'+(lbpIn-lbpOut).toLocaleString("en-US")+' ل.ل</h2><div class="muted">وارد '+lbpIn.toLocaleString("en-US")+' · صادر '+lbpOut.toLocaleString("en-US")+' ل.ل</div></div></div>'+
+  '<div class="panel notice">هذا تقرير حركة يومية، وليس كشف أرباح نهائياً: لا تُحسب كلفة البضاعة المباعة أو الربح الصافي إلا بعد ربط تكلفة كل قطعة بالمبيعات.</div>';
+  $("showReportDate").onclick=()=>{const value=$("reportDate").value;if(!value){msg("reportDate","اختار التاريخ");return}render(value)};
+  $("reportDate").onchange=()=>{if($("reportDate").value)render($("reportDate").value)};
+ };
+ render(today);
 }
 async function settingsPage(h){
  if(!can("settings.manage"))throw Error("لا تملك صلاحية الإعدادات");
