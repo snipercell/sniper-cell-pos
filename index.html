@@ -378,37 +378,100 @@ async function returnsPage(h){
  if(salesRes.error)throw salesRes.error;if(purchasesRes.error)throw purchasesRes.error;if(historyRes.error)throw historyRes.error;
  const sales=salesRes.data||[],purchases=purchasesRes.data||[],history=historyRes.data||[];
  const statusLabel={pending:"بانتظار موافقة المدير",approved:"تم الاعتماد",rejected:"مرفوض"};
- h.innerHTML=(can("returns.create")?'<div class="panel"><h2>طلب مرتجع جديد</h2><div class="formgrid"><div><label>نوع المرتجع</label><select id="retType"><option value="sale">مرتجع مبيعات — من الزبون</option><option value="purchase">مرتجع مشتريات — إلى المورد</option></select></div><div><label>الفاتورة الأصلية</label><select id="retInvoice"><option value="">اختار الفاتورة</option></select></div><div class="field full"><label>الصنف من الفاتورة</label><select id="retItem"><option value="">اختار الصنف</option></select></div><div><label>الكمية المرتجعة</label><input id="retQty" type="number" min=".01" step=".01" value="1"></div><div><label>IMEI / Serial (للأجهزة)</label><input id="retIdentifier" placeholder="أدخل رقم القطعة إذا كان الجهاز متتبّعاً"></div><div><label>طريقة ردّ المبلغ / تسويته</label><select id="retCurrency"><option value="USD">USD</option><option value="LBP">LBP</option></select></div><div><label>سبب المرتجع</label><input id="retReason" placeholder="مثلاً: عطل، تبديل، خطأ بالصنف"></div></div><div id="retEstimate" class="notice">اختار الفاتورة والصنف لاحتساب قيمة المرتجع.</div><button class="btn green" id="retSubmit" type="button">إرسال طلب المرتجع للمدير</button><div id="retMsg" class="msg"></div></div>':'')+
+ h.innerHTML=(can("returns.create")?'<div class="panel"><h2>طلب مرتجع جديد</h2><div class="formgrid"><div><label>نوع المرتجع</label><select id="retType"><option value="sale">مرتجع مبيعات — من الزبون</option><option value="purchase">مرتجع مشتريات — إلى المورد</option></select></div><div id="retInvoiceWrap"><label>الفاتورة الأصلية</label><select id="retInvoice"><option value="">اختار الفاتورة</option></select></div><div class="field full" id="retSaleFinder" style="display:none"><label>فتّش عن الصنف من دون معرفة تاريخ الفاتورة</label><div class="actions"><input id="retCode" placeholder="باركود / IMEI / Serial أو اسم الصنف" autocomplete="off"><button class="btn ghost" id="scanRetCode" type="button">📷 مسح بالكاميرا</button><button class="btn" id="findRetCode" type="button">بحث</button></div><label style="margin-top:10px;display:block">أو ابحث بصورة الصنف</label><div class="actions"><input id="retPhoto" type="file" accept="image/*" capture="environment"><button class="btn ghost" id="matchRetPhoto" type="button">🔎 مطابقة الصورة</button></div><div id="retPhotoResults"></div><div id="retSearchMsg" class="msg"></div></div><div class="field full"><label>الصنف / فاتورة البيع المطابقة</label><select id="retItem"><option value="">اختار الصنف</option></select><div class="muted" id="retSourceHint">اختار الفاتورة والصنف.</div></div><div><label>الكمية المرتجعة</label><input id="retQty" type="number" min=".01" step=".01" value="1"></div><div><label>IMEI / Serial (للأجهزة)</label><input id="retIdentifier" placeholder="أدخل رقم القطعة إذا كان الجهاز متتبّعاً"></div><div><label>طريقة ردّ المبلغ / تسويته</label><select id="retCurrency"><option value="USD">USD</option><option value="LBP">LBP</option></select></div><div><label>سبب المرتجع</label><input id="retReason" placeholder="مثلاً: عطل، تبديل، خطأ بالصنف"></div></div><div id="retEstimate" class="notice">اختار الصنف لاحتساب قيمة المرتجع.</div><button class="btn green" id="retSubmit" type="button">إرسال طلب المرتجع للمدير</button><div id="retMsg" class="msg"></div></div>':'')+
  '<div class="panel"><h2>سجل المرتجعات</h2><div class="tablewrap"><table><thead><tr><th>النوع</th><th>الكمية</th><th>IMEI / Serial</th><th>القيمة</th><th>السبب</th><th>الحالة</th><th>طلبه</th><th>التاريخ</th><th></th></tr></thead><tbody>'+history.map(x=>'<tr><td>'+(x.return_type==="sale"?"مرتجع مبيعات":"مرتجع مشتريات")+'</td><td>'+Number(x.quantity)+'</td><td>'+esc(x.identifier||"—")+'</td><td>'+Number(x.refund_amount).toLocaleString("en-US")+' '+x.refund_currency+'</td><td>'+esc(x.reason)+'</td><td>'+statusLabel[x.status]+'</td><td>'+esc(x.recorded?.full_name||x.recorded?.username||"—")+'</td><td>'+new Date(x.created_at).toLocaleString("ar-LB")+'</td><td>'+(can("returns.approve")&&x.status==="pending"?'<button class="btn green" data-ret-approve="'+x.id+'">اعتماد</button> <button class="btn red" data-ret-reject="'+x.id+'">رفض</button>':'')+'</td></tr>').join("")+'</tbody></table></div></div>';
  const typeEl=$("retType"),invoiceEl=$("retInvoice"),itemEl=$("retItem");
+ const clearItems=()=>{itemEl.innerHTML='<option value="">اختار الصنف</option>';invoiceEl.innerHTML='<option value="">اختار الفاتورة</option>';if($("retSourceHint"))$("retSourceHint").textContent="اختار الصنف أو امسح الكود للبحث عن فواتير البيع."};
  const fillInvoices=()=>{
-  const list=typeEl.value==="sale"?sales:purchases;
-  invoiceEl.innerHTML='<option value="">اختار الفاتورة</option>'+list.map(x=>'<option value="'+x.id+'">'+esc(x.invoice_no||"بدون رقم")+' — '+new Date(x.created_at).toLocaleDateString("ar-LB")+(x.customer_name?" — "+esc(x.customer_name):"")+'</option>').join("");
-  itemEl.innerHTML='<option value="">اختار الصنف</option>';if($("retEstimate"))$("retEstimate").textContent="اختار الفاتورة والصنف لاحتساب قيمة المرتجع.";
+  const sale=typeEl.value==="sale";
+  $("retInvoiceWrap").style.display=sale?"none":"block";
+  $("retSaleFinder").style.display=sale?"block":"none";
+  clearItems();
+  if(!sale)invoiceEl.innerHTML='<option value="">اختار الفاتورة</option>'+purchases.map(x=>'<option value="'+x.id+'">'+esc(x.invoice_no||"بدون رقم")+' — '+new Date(x.created_at).toLocaleDateString("ar-LB")+'</option>').join("");
+  $("retEstimate").textContent="اختار الصنف لاحتساب قيمة المرتجع.";
  };
  typeEl?.addEventListener("change",fillInvoices);if(typeEl)fillInvoices();
+ const renderSaleMatches=async(rows,label)=>{
+  if(!rows.length)throw Error("ما لقينا مبيعات مكتملة لهذا الصنف في هالفرع.");
+  const unique=[...new Map(rows.map(x=>[x.sale.id,x.sale])).values()];
+  invoiceEl.innerHTML='<option value="">اختار الفاتورة المطابقة</option>'+unique.map(x=>'<option value="'+x.id+'">'+esc(x.invoice_no||"بدون رقم")+' — '+new Date(x.created_at).toLocaleString("ar-LB")+(x.customer_name?" — "+esc(x.customer_name):"")+'</option>').join("");
+  itemEl.innerHTML='<option value="">اختار الصنف من الفواتير المطابقة</option>'+rows.map(x=>'<option value="'+x.id+'" data-sale-id="'+x.sale_id+'" data-qty="'+x.quantity+'" data-price="'+x.unit_price_usd+'" data-track="'+(x.product?.tracking_type||"quantity")+'" data-name="'+esc(x.description||x.product?.name||"صنف")+'">'+esc(x.description||x.product?.name||"صنف")+' — فاتورة '+esc(x.sale.invoice_no||"بدون رقم")+' — '+new Date(x.sale.created_at).toLocaleDateString("ar-LB")+' — الكمية '+x.quantity+'</option>').join("");
+  const first=rows[0];invoiceEl.value=first.sale_id;itemEl.value=first.id;itemEl.dispatchEvent(new Event("change"));
+  $("retSourceHint").textContent="لقينا "+rows.length+" بند بيع مطابق"+(label?" لـ "+label:"")+". اختار الفاتورة/البند الصحيح إذا ظهرت أكتر من نتيجة.";
+  updateEstimate();
+ };
+ const loadSaleRows=async(productId,identifier)=>{
+  let q=db.from("sale_items").select("id,sale_id,product_id,description,quantity,unit_price_usd,serial_number,product:products(name,tracking_type),sale:sales!inner(id,invoice_no,customer_name,created_at,branch_id,status)").eq("sale.branch_id",branchId).eq("sale.status","completed");
+  if(productId)q=q.eq("product_id",productId);
+  if(identifier)q=q.eq("serial_number",identifier);
+  const {data,error}=await q.order("created_at",{foreignTable:"sale",ascending:false}).limit(200);
+  if(error)throw error;
+  return data||[];
+ };
+ const searchSaleCode=async()=>{
+  const b=$("findRetCode"),term=$("retCode").value.trim();if(!term)return msg("retSearchMsg","اكتب باركود أو IMEI/Serial أو اسم الصنف أولاً");
+  b.disabled=true;msg("retSearchMsg","عم نفتّش بسجل المبيعات...");
+  try{
+   let product=null,rows=[];
+   const {data:byBarcode,error:be}=await db.from("products").select("id,name,barcode,tracking_type").eq("barcode",term).limit(1);if(be)throw be;
+   product=byBarcode?.[0]||null;
+   if(product)rows=await loadSaleRows(product.id,null);
+   if(!rows.length){
+    const {data:units,error:ue}=await db.from("product_units").select("product_id,sale_item_id,identifier").eq("branch_id",branchId).eq("identifier",term).eq("status","sold").limit(5);if(ue)throw ue;
+    const ids=(units||[]).map(x=>x.sale_item_id).filter(Boolean);
+    if(ids.length){const {data,error}=await db.from("sale_items").select("id,sale_id,product_id,description,quantity,unit_price_usd,serial_number,product:products(name,tracking_type),sale:sales!inner(id,invoice_no,customer_name,created_at,branch_id,status)").in("id",ids).eq("sale.branch_id",branchId).eq("sale.status","completed");if(error)throw error;rows=data||[];product=rows[0]?.product||product}
+   }
+   if(!rows.length&&!product){
+    const {data,error}=await db.from("products").select("id,name,barcode,tracking_type").ilike("name","%"+term.replace(/[%_]/g,"")+"%").limit(10);if(error)throw error;
+    const all=[];for(const p of data||[]){const found=await loadSaleRows(p.id,null);all.push(...found)}
+    rows=all;
+   }
+   await renderSaleMatches(rows,product?.name||term);
+   msg("retSearchMsg","تم العثور على فواتير البيع المطابقة. اختار البند المطلوب.",true);
+  }catch(e){msg("retSearchMsg",e.message)}finally{b.disabled=false}
+ };
+ $("findRetCode")?.addEventListener("click",searchSaleCode);
+ $("retCode")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();searchSaleCode()}});
+ $("scanRetCode")?.addEventListener("click",()=>scanBarcode(code=>{$("retCode").value=code;searchSaleCode()},"retSearchMsg"));
+ const retPhotoFeatures=async source=>{const img=new Image();let url=null;try{let src;if(typeof source==="string"){src=source;if(!source.startsWith("data:"))img.crossOrigin="anonymous"}else{url=URL.createObjectURL(source);src=url}await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("تعذّر فتح الصورة"));img.src=src});const canvas=document.createElement("canvas");canvas.width=32;canvas.height=32;const x=canvas.getContext("2d",{willReadFrequently:true});x.fillStyle="#fff";x.fillRect(0,0,32,32);const side=Math.min(img.naturalWidth,img.naturalHeight),sx=(img.naturalWidth-side)/2,sy=(img.naturalHeight-side)/2;x.drawImage(img,sx,sy,side,side,0,0,32,32);const d=x.getImageData(0,0,32,32).data,hist=new Array(48).fill(0),gray=[];for(let i=0;i<d.length;i+=4){hist[Math.min(15,Math.floor(d[i]/16))]++;hist[16+Math.min(15,Math.floor(d[i+1]/16))]++;hist[32+Math.min(15,Math.floor(d[i+2]/16))]++;gray.push(.299*d[i]+.587*d[i+1]+.114*d[i+2])}for(let k=0;k<3;k++){let sum=0;for(let j=0;j<16;j++)sum+=hist[k*16+j];for(let j=0;j<16;j++)hist[k*16+j]/=sum||1}let bits="";for(let y=0;y<8;y++)for(let xx=0;xx<8;xx++)bits+=gray[y*32+xx]>gray[y*32+xx+1]?"1":"0";return{hist,bits}}finally{if(url)URL.revokeObjectURL(url)}};
+ const compareRetFeatures=(a,b)=>{let distance=0;for(let i=0;i<a.hist.length;i++)distance+=Math.abs(a.hist[i]-b.hist[i]);const color=1-distance/6;let same=0;for(let i=0;i<64;i++)if(a.bits[i]===b.bits[i])same++;return Math.max(0,Math.min(1,.65*color+.35*(same/64)))};
+ $("matchRetPhoto")?.addEventListener("click",async()=>{
+  const b=$("matchRetPhoto"),file=$("retPhoto").files?.[0];b.disabled=true;$("retPhotoResults").innerHTML="";
+  try{
+   if(!file)throw Error("اختار صورة الصنف أولاً");
+   msg("retSearchMsg","عم نقارن الصورة مع صور الأصناف المحفوظة...");
+   const query=await retPhotoFeatures(file),{data:products,error}=await db.from("products").select("id,name,barcode,image_url,tracking_type").not("image_url","is",null).limit(300);if(error)throw error;
+   const ranked=[];for(const p of products||[]){try{const ref=await retPhotoFeatures(p.image_url);ranked.push({id:p.id,name:p.name,image:p.image_url,score:compareRetFeatures(query,ref)})}catch(_){}}
+   ranked.sort((a,b)=>b.score-a.score);if(!ranked.length)throw Error("ما في صور أصناف محفوظة. أضف صور الأصناف من المشتريات أولاً.");
+   const top=ranked.slice(0,5);
+   $("retPhotoResults").innerHTML=top.map((p,i)=>'<div class="notice" style="display:flex;align-items:center;gap:10px;margin:6px 0"><img src="'+esc(p.image)+'" alt="" style="width:64px;height:64px;object-fit:contain;border-radius:8px;background:#fff"><div style="flex:1"><strong>'+esc(p.name)+'</strong><div class="muted">تشابه تقريبي '+Math.round(p.score*100)+'%</div></div><button class="btn ghost" type="button" data-ret-photo="'+esc(p.id)+'">اختيار</button></div>').join("");
+   $("retPhotoResults").querySelectorAll("[data-ret-photo]").forEach(btn=>btn.onclick=async()=>{const p=top.find(x=>x.id===btn.dataset.retPhoto);if(!p)return;try{const rows=await loadSaleRows(p.id,null);await renderSaleMatches(rows,p.name);msg("retSearchMsg","تم العثور على فواتير الصنف المطابقة.",true)}catch(e){msg("retSearchMsg",e.message)}});
+   msg("retSearchMsg","اختار الصنف الصحيح من الصور، ورح نعرضلك فواتير البيع الخاصة فيه.");
+  }catch(e){msg("retSearchMsg",e.message)}finally{b.disabled=false}
+ });
  invoiceEl?.addEventListener("change",async()=>{
+  if(typeEl.value==="sale")return;
   itemEl.innerHTML='<option value="">جارٍ تحميل الأصناف...</option>';
   try{
-   const sale=typeEl.value==="sale",table=sale?"sale_items":"purchase_items",fk=sale?"sale_id":"purchase_id";
-   const fields=sale?"id,product_id,description,quantity,unit_price_usd,serial_number,product:products(name,tracking_type)":"id,product_id,quantity,unit_cost_usd,product:products(name,tracking_type)";
-   const {data,error}=await db.from(table).select(fields).eq(fk,invoiceEl.value);if(error)throw error;
-   itemEl.innerHTML='<option value="">اختار الصنف</option>'+(data||[]).map(x=>{const label=x.description||x.product?.name||"صنف";const price=sale?x.unit_price_usd:x.unit_cost_usd;return '<option value="'+x.id+'" data-qty="'+x.quantity+'" data-price="'+price+'" data-track="'+(x.product?.tracking_type||"quantity")+'" data-name="'+esc(label)+'">'+esc(label)+' — الكمية الأصلية '+x.quantity+' — $'+Number(price).toFixed(2)+'</option>'}).join("");
+   const {data,error}=await db.from("purchase_items").select("id,product_id,quantity,unit_cost_usd,product:products(name,tracking_type)").eq("purchase_id",invoiceEl.value);if(error)throw error;
+   itemEl.innerHTML='<option value="">اختار الصنف</option>'+(data||[]).map(x=>'<option value="'+x.id+'" data-qty="'+x.quantity+'" data-price="'+x.unit_cost_usd+'" data-track="'+(x.product?.tracking_type||"quantity")+'" data-name="'+esc(x.product?.name||"صنف")+'">'+esc(x.product?.name||"صنف")+' — الكمية الأصلية '+x.quantity+' — $'+Number(x.unit_cost_usd).toFixed(2)+'</option>').join("");
    $("retQty").value="1";$("retIdentifier").value="";updateEstimate();
   }catch(e){itemEl.innerHTML='<option value="">تعذّر تحميل الأصناف</option>';msg("retMsg",e.message)}
  });
+ itemEl?.addEventListener("change",()=>{const o=itemEl.selectedOptions[0];if(typeEl.value==="sale"&&o?.dataset.saleId)invoiceEl.value=o.dataset.saleId;$("retQty").value="1";$("retIdentifier").value="";updateEstimate()});
  const updateEstimate=()=>{
   const o=itemEl?.selectedOptions?.[0],qty=Number($("retQty")?.value||0),currency=$("retCurrency")?.value||"USD";
   if(!o||!o.value){$("retEstimate").textContent="اختار الصنف لاحتساب قيمة المرتجع.";return}
   const total=Math.max(0,qty)*Number(o.dataset.price||0);
-  $("retEstimate").textContent="قيمة المرتجع التقديرية: "+(currency==="USD"?"$"+total.toFixed(2):"تُحتسب بالليرة وفق سعر صرف الفاتورة الأصلية")+" — قيمة المبلغ النهائية يحددها النظام من الفاتورة.";
+  $("retEstimate").textContent="قيمة المرتجع التقديرية: "+(currency==="USD"?"$"+total.toFixed(2):"تُحتسب بالليرة وفق سعر صرف الفاتورة الأصلية")+" — القيمة النهائية تُحتسب من الفاتورة.";
  };
  ["change","input"].forEach(ev=>{itemEl?.addEventListener(ev,updateEstimate);$("retQty")?.addEventListener(ev,updateEstimate);$("retCurrency")?.addEventListener(ev,updateEstimate)});
  if($("retSubmit"))$("retSubmit").onclick=async()=>{
   const b=$("retSubmit");b.disabled=true;
   try{
    const o=itemEl.selectedOptions[0],qty=Number($("retQty").value),track=o?.dataset.track||"quantity";
-   if(!invoiceEl.value||!o?.value)throw Error("اختار الفاتورة والصنف");
+   if(!o?.value)throw Error("اختار الصنف من النتائج أو الفاتورة");
+   if(typeEl.value==="purchase"&&!invoiceEl.value)throw Error("اختار فاتورة المشتريات");
    if(!Number.isFinite(qty)||qty<=0)throw Error("الكمية غير صالحة");
    if(["imei","serial"].includes(track)&&qty!==1)throw Error("للأجهزة، كل طلب مرتجع يكون قطعة واحدة");
    const result=await call("request_pos_return",{p_branch_id:branchId,p_return_type:typeEl.value,p_source_item_id:o.value,p_quantity:qty,p_identifier:$("retIdentifier").value.trim()||null,p_reason:$("retReason").value.trim(),p_currency:$("retCurrency").value});
