@@ -579,7 +579,7 @@ async function topupsPage(h){
   const form=can("topups.create")?'<div class="panel"><div class="sectionhead"><h2>تسجيل '+labels[activeCategory]+'</h2><span class="tag">'+(activeCategory==="cards"?"بطاقات الشحن":activeCategory==="dollars"?"تعبئة دولارات":"باقات شهرية")+'</span></div><div class="formgrid"><div><label>الشركة</label><select id="tProvider"><option value="Alfa">Alfa</option><option value="Touch">Touch</option></select></div>'+
    (activeCategory==="months"?'<div><label>مدة الباقة</label><select id="tMonths"><option value="1">1 شهر</option><option value="2">2 أشهر</option><option value="3">3 أشهر</option><option value="4">4 أشهر</option><option value="5">5 أشهر</option><option value="6">6 أشهر</option><option value="7">7 أشهر</option><option value="8">8 أشهر</option><option value="9">9 أشهر</option><option value="10">10 أشهر</option><option value="11">11 أشهر</option><option value="12">12 أشهر</option></select></div>':'')+
     (activeCategory==="dollars"?'<div><label>قيمة التعبئة</label><select id="tAmount"><option value="2">$2</option><option value="3">$3</option></select></div>':activeCategory==="cards"?'<div><label>عدد الكروت</label><input id="tQty" type="number" min="1" step="1" value="1"></div>':'')+
-   (activeCategory==="cards"?'<div><label>كلفة الوحدة $</label><input id="tCost" type="number" min="0" step=".01" value="0"></div>':'')+'<div><label>عملة سعر البيع</label><select id="tSellCurrency"><option value="USD">دولار أمريكي ($)</option><option value="LBP">ليرة لبنانية (ل.ل)</option></select></div><div><label id="tSellLabel">سعر بيع الوحدة $</label><input id="tSell" type="number" min="0" step="any" value="0"></div></div><div class="notice" id="tTotals" style="margin-top:12px">الإجمالي: مبيع $0.00</div><button class="btn green" id="saveTopup" style="margin-top:12px">حفظ العملية</button><div id="tMsg" class="msg"></div></div>':'';
+   '<div><label>كلفة العملية / الوحدة $</label><input id="tCost" type="number" min="0" step=".01" value="0"></div>'+'<div><label>عملة سعر البيع</label><select id="tSellCurrency"><option value="USD">دولار أمريكي ($)</option><option value="LBP">ليرة لبنانية (ل.ل)</option></select></div><div><label id="tSellLabel">سعر بيع الوحدة $</label><input id="tSell" type="number" min="0" step="any" value="0"></div></div><div class="notice" id="tTotals" style="margin-top:12px">الإجمالي: مبيع $0.00</div><button class="btn green" id="saveTopup" style="margin-top:12px">حفظ العملية</button><div id="tMsg" class="msg"></div></div>':'';
   h.innerHTML='<div class="panel"><div class="sectionhead"><h2>أقسام التعبئة</h2><span class="muted">كل نوع بسجل مستقل</span></div><div class="actions">'+Object.keys(labels).map(k=>'<button type="button" class="btn '+(k===activeCategory?'':'ghost')+'" data-topup-cat="'+k+'">'+labels[k]+'</button>').join("")+'</div></div>'+form+
      '<div class="panel"><div class="sectionhead"><h2>سجل '+labels[activeCategory]+'</h2><span class="tag">'+rows.length+' عملية</span></div><div class="tablewrap"><table><thead><tr><th>الشركة</th><th>التفاصيل</th><th>الكمية</th><th>الكلفة $</th><th>المبيع</th><th>الربح</th><th>التاريخ</th></tr></thead><tbody>'+
       (rows.length?rows.map(x=>{const details=activeCategory==="dollars"?(x.category==="days"?Number(x.days_count||0)+" يوم":"تعبئة $"+Number(x.card_amount_usd||0).toFixed(2)):activeCategory==="months"?(Number(x.months_count||0)===12?"12 شهر":Number(x.months_count||0)+" شهر"):"كرت";const costValue=Number(x.cost_usd||0),saleValue=Number(x.sell_price_usd||0),saleText=x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+saleValue.toFixed(2),profitText=x.sell_currency==="LBP"?"—":"$"+(saleValue-costValue).toFixed(2);return '<tr><td>'+esc(x.provider)+'</td><td>'+details+'</td><td>'+Number(x.quantity||1)+'</td><td>$'+costValue.toFixed(2)+'</td><td>'+saleText+'</td><td>'+profitText+'</td><td>'+new Date(x.created_at).toLocaleString("ar-LB")+'</td></tr>'}).join(""):'<tr><td colspan="7" class="muted">ما في عمليات مسجّلة</td></tr>')+
@@ -588,16 +588,16 @@ async function topupsPage(h){
   const cost=$("tCost"),sell=$("tSell"),qty=$("tQty"),totals=$("tTotals"),sellCurrency=$("tSellCurrency"),sellLabel=$("tSellLabel");
   const updateSellLabel=()=>{if(sellLabel&&sellCurrency)sellLabel.textContent=sellCurrency.value==="LBP"?"سعر بيع الوحدة ل.ل":"سعر بيع الوحدة $"};
   if(sellCurrency){sellCurrency.addEventListener("change",()=>{updateSellLabel();updateTotals()});updateSellLabel()}
-  const updateTotals=()=>{if(!totals)return;const q=activeCategory==="cards"?Math.max(1,Number(qty?.value)||1):1,c=(Number(cost?.value)||0)*q,v=(Number(sell?.value)||0)*q,cur=sellCurrency?.value||"USD",fmt=cur==="LBP"?v.toLocaleString("en-US")+" ل.ل":"$"+v.toFixed(2);totals.textContent=activeCategory==="cards"?(cur==="LBP"?"الإجمالي: كلفة $"+c.toFixed(2)+" · مبيع "+fmt+" · الربح يُحسب عند البيع بالدولار":"الإجمالي: كلفة $"+c.toFixed(2)+" · مبيع "+fmt+" · ربح $"+(v-c).toFixed(2)):"إجمالي المبيع: "+fmt};
+  const updateTotals=()=>{if(!totals)return;const q=activeCategory==="cards"?Math.max(1,Number(qty?.value)||1):1,c=(Number(cost?.value)||0)*q,v=(Number(sell?.value)||0)*q,cur=sellCurrency?.value||"USD",fmt=cur==="LBP"?v.toLocaleString("en-US")+" ل.ل":"$"+v.toFixed(2);totals.textContent=cur==="LBP"?"الإجمالي: كلفة $"+c.toFixed(2)+" · مبيع "+fmt+" · الربح يحتاج سعر صرف":"الإجمالي: كلفة $"+c.toFixed(2)+" · مبيع "+fmt+" · ربح $"+(v-c).toFixed(2)};
   [cost,sell,qty].filter(Boolean).forEach(el=>el.addEventListener("input",updateTotals));
   if(!$("saveTopup"))return;
   $("saveTopup").onclick=async()=>{
    const b=$("saveTopup");b.disabled=true;
    try{
     const quantity=activeCategory==="cards"?Number($("tQty").value):1;
-    const unitCost=activeCategory==="cards"?Number($("tCost").value):0,unitSell=Number($("tSell").value),sellCurrency=$("tSellCurrency").value;
+    const unitCost=Number($("tCost").value),unitSell=Number($("tSell").value),sellCurrency=$("tSellCurrency").value;
     if(!Number.isInteger(quantity)||quantity<1)throw Error("أدخل كمية صحيحة");
-    if((activeCategory==="cards"&&(!Number.isFinite(unitCost)||unitCost<0))||!Number.isFinite(unitSell)||unitSell<0)throw Error(activeCategory==="cards"?"تحقّق من الكلفة وسعر البيع":"تحقّق من سعر البيع");
+    if(!Number.isFinite(unitCost)||unitCost<0||!Number.isFinite(unitSell)||unitSell<0)throw Error("تحقّق من الكلفة وسعر البيع");
      const phone=null;
     const days=null;
     const months=activeCategory==="months"?Number($("tMonths").value):null;
@@ -666,51 +666,112 @@ async function purchasesPage(h){
 async function reportsPage(h){
  if(!can("reports.view"))throw Error("لا تملك صلاحية التقارير");
  if(!branchId)throw Error("اختار فرعاً أولاً");
- const [{data:s,error:se},{data:p,error:pe},{data:e,error:ee},{data:t,error:te},{data:c,error:ce}]=await Promise.all([
+ const [{data:s,error:se},{data:p,error:pe},{data:e,error:ee},{data:t,error:te},{data:ct,error:ce},{data:regs,error:re}]=await Promise.all([
   db.from("sales").select("*").eq("branch_id",branchId).eq("status","completed"),
   db.from("purchases").select("id,invoice_no,total_usd,created_at,supplier:suppliers(name)").eq("branch_id",branchId),
   db.from("expenses").select("id,description,amount,currency,status,created_at,recorded_by,recorder:profiles!expenses_recorded_by_fkey(full_name,username)").eq("branch_id",branchId),
   db.from("topups").select("id,category,provider,duration,card_amount_usd,days_count,months_count,quantity,cost_usd,sell_price_usd,sell_price_lbp,sell_currency,created_at").eq("branch_id",branchId),
-  db.from("cash_transactions").select("id,direction,description,amount,currency,related_type,created_at").eq("branch_id",branchId)
+  db.from("cash_transactions").select("id,direction,description,amount,currency,related_type,created_at").eq("branch_id",branchId),
+  db.from("daily_cash_registers").select("*").eq("branch_id",branchId).order("register_date",{ascending:true})
  ]);
- if(se)throw se;if(pe)throw pe;if(ee)throw ee;if(te)throw te;if(ce)throw ce;
- const sales=s||[],purchases=p||[],expenses=e||[],topups=t||[],cash=c||[];
+ if(se)throw se;if(pe)throw pe;if(ee)throw ee;if(te)throw te;if(ce)throw ce;if(re)throw re;
+ const sales=s||[],purchases=p||[],expenses=e||[],topups=t||[],cash=ct||[],registers=regs||[];
+ const saleIds=sales.map(x=>x.id);
+ const {data:payments,error:payError}=saleIds.length?await db.from("sale_payments").select("*").in("sale_id",saleIds):{data:[],error:null};
+ if(payError)throw payError;
+ const salePayments=payments||[];
  const dateKey=x=>{const d=new Date(x);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
  const today=dateKey(new Date()),sum=(arr,key,filter=()=>true)=>arr.filter(filter).reduce((n,x)=>n+Number(x[key]||0),0);
  const moneyDate=x=>new Date(x).toLocaleString("ar-LB");
- const render=day=>{
-  const inDay=arr=>arr.filter(x=>dateKey(x.created_at)===day);
-  const ds=inDay(sales),dp=inDay(purchases),de=inDay(expenses),dt=inDay(topups),dc=inDay(cash);
-  const usdApproved=sum(de,"amount",x=>x.status==="approved"&&x.currency==="USD"),lbpApproved=sum(de,"amount",x=>x.status==="approved"&&x.currency==="LBP"),usdPending=sum(de,"amount",x=>x.status==="pending"&&x.currency==="USD"),lbpPending=sum(de,"amount",x=>x.status==="pending"&&x.currency==="LBP");
-  const usdIn=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="in"),usdOut=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="out"),lbpIn=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="in"),lbpOut=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="out");
+ const byDate=(arr,day,key="created_at")=>arr.filter(x=>dateKey(x[key])===day);
+ const regMap=new Map(registers.map(x=>[x.register_date,x]));
+ const movement=day=>{
+  const ds=byDate(sales,day),dp=byDate(purchases,day),de=byDate(expenses,day).filter(x=>x.status==="approved"),dt=byDate(topups,day),dc=byDate(cash,day);
+  const ids=new Set(ds.map(x=>x.id)),sp=byDate(salePayments,day).filter(x=>ids.has(x.sale_id));
   const dollars=dt.filter(x=>x.category==="dollars"||x.category==="days"),months=dt.filter(x=>x.category==="months"),cards=dt.filter(x=>(x.category||"cards")==="cards");
+  const usdSales=sum(sp,"amount",x=>x.currency==="USD"),lbpSales=sum(sp,"amount",x=>x.currency==="LBP");
+  const usdTopup=sum(dt,"sell_price_usd"),lbpTopup=sum(dt,"sell_price_lbp",x=>x.sell_currency==="LBP");
+  const usdTopupCost=sum(dt,"cost_usd");
+  const usdCashIn=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="in"),usdCashOut=sum(dc,"amount",x=>x.currency==="USD"&&x.direction==="out");
+  const lbpCashIn=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="in"),lbpCashOut=sum(dc,"amount",x=>x.currency==="LBP"&&x.direction==="out");
+  const usdExpenses=sum(de,"amount",x=>x.currency==="USD"),lbpExpenses=sum(de,"amount",x=>x.currency==="LBP");
+  const usdPurchase=sum(dp,"total_usd");
+  return {ds,dp,de,dt,dc,sp,dollars,months,cards,usdSales,lbpSales,usdTopup,lbpTopup,usdTopupCost,usdCashIn,usdCashOut,lbpCashIn,lbpCashOut,usdExpenses,lbpExpenses,usdPurchase,usdIn:usdSales+usdTopup+usdCashIn,usdOut:usdPurchase+usdExpenses+usdTopupCost+usdCashOut,lbpIn:lbpSales+lbpTopup+lbpCashIn,lbpOut:lbpExpenses+lbpCashOut};
+ };
+ const shift=(day,n)=>{const d=new Date(day+"T12:00:00");d.setDate(d.getDate()+n);return dateKey(d)};
+ const balances=(opening,day)=>{
+  const m=movement(day);
+  return {usd:Number(opening.usd||0)+m.usdIn-m.usdOut,lbp:Number(opening.lbp||0)+m.lbpIn-m.lbpOut};
+ };
+ const openingFor=day=>{
+  const existing=regMap.get(day);
+  if(existing)return {cashUsd:Number(existing.opening_usd||0),cashLbp:Number(existing.opening_lbp||0),topUsd:Number(existing.opening_topup_usd||0),topLbp:Number(existing.opening_topup_lbp||0),row:existing};
+  const previous=shift(day,-1);
+  let prior=[...registers].filter(x=>x.register_date<day).sort((a,b)=>a.register_date.localeCompare(b.register_date)).pop();
+  if(!prior)return {cashUsd:0,cashLbp:0,topUsd:0,topLbp:0,row:null};
+  let opening={usd:Number(prior.opening_usd||0)+Number(prior.opening_topup_usd||0),lbp:Number(prior.opening_lbp||0)+Number(prior.opening_topup_lbp||0)};
+  let cursor=prior.register_date;
+  while(cursor<=previous){
+   const r=regMap.get(cursor);
+   if(r)opening={usd:Number(r.opening_usd||0)+Number(r.opening_topup_usd||0),lbp:Number(r.opening_lbp||0)+Number(r.opening_topup_lbp||0)};
+   opening=balances(opening,cursor);
+   if(cursor===previous)break;
+   cursor=shift(cursor,1);
+  }
+  return {cashUsd:opening.usd,cashLbp:opening.lbp,topUsd:0,topLbp:0,row:null};
+ };
+ const render=day=>{
+  const m=movement(day),o=openingFor(day),openingUsd=o.cashUsd+o.topUsd,openingLbp=o.cashLbp+o.topLbp;
+  const close=balances({usd:openingUsd,lbp:openingLbp},day);
+  const usdPending=sum(byDate(expenses,day),"amount",x=>x.status==="pending"&&x.currency==="USD"),lbpPending=sum(byDate(expenses,day),"amount",x=>x.status==="pending"&&x.currency==="LBP");
+  const topupProfitUsd=m.usdTopup-m.usdTopupCost;
   const detailRows={
-   sales:ds.map(x=>'<tr><td>'+esc(x.invoice_no||x.id||"—")+'</td><td>$'+Number(x.total_usd||0).toFixed(2)+'</td><td>'+Number(x.total_lbp||0).toLocaleString("en-US")+' ل.ل</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
-   purchases:dp.map(x=>'<tr><td>'+esc(x.invoice_no||"—")+'</td><td>'+esc(x.supplier?.name||"—")+'</td><td>$'+Number(x.total_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
-   expenses:de.map(x=>'<tr><td>'+esc(x.description||"—")+'</td><td>'+Number(x.amount||0).toLocaleString("en-US")+' '+esc(x.currency)+'</td><td>'+esc(x.status||"—")+'</td><td>'+esc(x.recorder?.full_name||x.recorder?.username||"—")+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
-   dollars:dollars.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+(x.category==="days"?Number(x.days_count||0)+" يوم":"$"+Number(x.card_amount_usd||0).toFixed(2))+'</td><td>'+Number(x.quantity||1)+'</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
-   months:months.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+Number(x.months_count||0)+' شهر</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
-   cards:cards.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+Number(x.quantity||1)+'</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>$'+Number(x.cost_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
-   cash:dc.map(x=>'<tr><td>'+(x.direction==="in"?"وارد":"صادر")+'</td><td>'+esc(x.description||"—")+'</td><td>'+Number(x.amount||0).toLocaleString("en-US")+' '+esc(x.currency)+'</td><td>'+esc(x.related_type||"يدوي")+'</td><td>'+moneyDate(x.created_at)+'</td></tr>')
+   sales:m.ds.map(x=>'<tr><td>'+esc(x.invoice_no||x.id||"—")+'</td><td>$'+Number(x.total_usd||0).toFixed(2)+'</td><td>'+Number(x.total_lbp||0).toLocaleString("en-US")+' ل.ل</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   purchases:m.dp.map(x=>'<tr><td>'+esc(x.invoice_no||"—")+'</td><td>'+esc(x.supplier?.name||"—")+'</td><td>$'+Number(x.total_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   expenses:byDate(expenses,day).map(x=>'<tr><td>'+esc(x.description||"—")+'</td><td>'+Number(x.amount||0).toLocaleString("en-US")+' '+esc(x.currency)+'</td><td>'+esc(x.status||"—")+'</td><td>'+esc(x.recorder?.full_name||x.recorder?.username||"—")+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   dollars:m.dollars.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+(x.category==="days"?Number(x.days_count||0)+" يوم":"$"+Number(x.card_amount_usd||0).toFixed(2))+'</td><td>'+Number(x.quantity||1)+'</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>كلفة $'+Number(x.cost_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   months:m.months.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+Number(x.months_count||0)+' شهر</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>كلفة $'+Number(x.cost_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   cards:m.cards.map(x=>'<tr><td>'+esc(x.provider||"—")+'</td><td>'+Number(x.quantity||1)+'</td><td>'+(x.sell_currency==="LBP"?Number(x.sell_price_lbp||0).toLocaleString("en-US")+" ل.ل":"$"+Number(x.sell_price_usd||0).toFixed(2))+'</td><td>$'+Number(x.cost_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
+   cash:m.dc.map(x=>'<tr><td>'+(x.direction==="in"?"وارد":"صادر")+'</td><td>'+esc(x.description||"—")+'</td><td>'+Number(x.amount||0).toLocaleString("en-US")+' '+esc(x.currency)+'</td><td>'+esc(x.related_type||"يدوي")+'</td><td>'+moneyDate(x.created_at)+'</td></tr>')
   };
-  const detailHeaders={sales:"<th>رقم الفاتورة</th><th>USD</th><th>LBP</th><th>التاريخ</th>",purchases:"<th>الفاتورة</th><th>المورد</th><th>الإجمالي</th><th>التاريخ</th>",expenses:"<th>البيان</th><th>المبلغ</th><th>الحالة</th><th>المسجّل</th><th>التاريخ</th>",dollars:"<th>الشركة</th><th>التعبئة</th><th>الكمية</th><th>المبيع</th><th>التاريخ</th>",months:"<th>الشركة</th><th>المدة</th><th>المبيع</th><th>التاريخ</th>",cards:"<th>الشركة</th><th>الكمية</th><th>المبيع</th><th>الكلفة</th><th>التاريخ</th>",cash:"<th>الحركة</th><th>البيان</th><th>المبلغ</th><th>النوع</th><th>التاريخ</th>"};
+  const detailHeaders={sales:"<th>رقم الفاتورة</th><th>USD</th><th>LBP</th><th>التاريخ</th>",purchases:"<th>الفاتورة</th><th>المورد</th><th>الإجمالي</th><th>التاريخ</th>",expenses:"<th>البيان</th><th>المبلغ</th><th>الحالة</th><th>المسجّل</th><th>التاريخ</th>",dollars:"<th>الشركة</th><th>التعبئة</th><th>الكمية</th><th>المبيع</th><th>الكلفة</th><th>التاريخ</th>",months:"<th>الشركة</th><th>المدة</th><th>المبيع</th><th>الكلفة</th><th>التاريخ</th>",cards:"<th>الشركة</th><th>الكمية</th><th>المبيع</th><th>الكلفة</th><th>التاريخ</th>",cash:"<th>الحركة</th><th>البيان</th><th>المبلغ</th><th>النوع</th><th>التاريخ</th>"};
   const titles={sales:"تفاصيل المبيعات",purchases:"تفاصيل المشتريات",expenses:"تفاصيل المصاريف",dollars:"تفاصيل بيع الدولارات",months:"تفاصيل بيع الأشهر",cards:"تفاصيل بيع الكروت",cash:"تفاصيل الصندوق"};
-  h.innerHTML='<div class="panel"><div class="sectionhead"><h2>التقارير اليومية</h2><span class="tag">'+esc(branches.find(b=>b.id===branchId)?.name||"")+'</span></div><p class="muted">اختار التاريخ، وبعدها اكبس على أي قسم لتظهر تفاصيل عملياته.</p><div class="formgrid"><div><label>تاريخ التقرير</label><input id="reportDate" type="date" value="'+day+'"></div><div style="display:flex;align-items:end"><button class="btn" id="showReportDate">عرض التقرير</button></div></div></div>'+
-  '<div class="panel"><div class="sectionhead"><h2>تقرير يوم '+new Date(day+"T12:00:00").toLocaleDateString("ar-LB")+'</h2><span class="tag">'+(ds.length+dp.length+de.length+dt.length+dc.length)+' حركة</span></div><p class="muted">اكبس على البطاقة لعرض التفاصيل.</p></div>'+
-  '<div class="grid">'+
-  '<button type="button" class="panel" data-report-detail="sales"><div class="muted">المبيعات المكتملة</div><h2>'+ds.length+' فاتورة</h2><b>$'+sum(ds,"total_usd").toFixed(2)+'</b><div class="muted">'+sum(ds,"total_lbp").toLocaleString("en-US")+' ل.ل</div></button>'+
-  '<button type="button" class="panel" data-report-detail="purchases"><div class="muted">المشتريات</div><h2>'+dp.length+' فاتورة</h2><b>$'+sum(dp,"total_usd").toFixed(2)+'</b></button>'+
-  '<button type="button" class="panel" data-report-detail="expenses"><div class="muted">المصاريف</div><h2>$'+usdApproved.toFixed(2)+' معتمدة</h2><div class="muted">بانتظار: $'+usdPending.toFixed(2)+' · '+lbpApproved.toLocaleString("en-US")+' ل.ل معتمدة · '+lbpPending.toLocaleString("en-US")+' ل.ل بانتظار</div></button>'+
-  '<button type="button" class="panel" data-report-detail="dollars"><div class="muted">بيع دولارات</div><h2>'+dollars.length+' عملية</h2><b>$'+sum(dollars,"sell_price_usd").toFixed(2)+' · '+sum(dollars,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</b></button>'+
-  '<button type="button" class="panel" data-report-detail="months"><div class="muted">بيع أشهر</div><h2>'+months.length+' عملية</h2><b>$'+sum(months,"sell_price_usd").toFixed(2)+' · '+sum(months,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</b></button>'+
-  '<button type="button" class="panel" data-report-detail="cards"><div class="muted">بيع كروت</div><h2>'+cards.length+' عملية</h2><b>$'+sum(cards,"sell_price_usd").toFixed(2)+' · '+sum(cards,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</b></button>'+
-  '<button type="button" class="panel" data-report-detail="cash"><div class="muted">صافي الصندوق USD</div><h2>$'+(usdIn-usdOut).toFixed(2)+'</h2><div class="muted">وارد $'+usdIn.toFixed(2)+' · صادر $'+usdOut.toFixed(2)+'</div></button>'+
-  '<button type="button" class="panel" data-report-detail="cash"><div class="muted">صافي الصندوق LBP</div><h2>'+(lbpIn-lbpOut).toLocaleString("en-US")+' ل.ل</h2><div class="muted">وارد '+lbpIn.toLocaleString("en-US")+' · صادر '+lbpOut.toLocaleString("en-US")+' ل.ل</div></button></div>'+
-  '<div class="panel" id="reportDetails"><div class="muted">اكبس على أي قسم من الأقسام بالأعلى لعرض تفاصيله.</div></div>'+
-  '<div class="panel notice">هذا تقرير حركة يومية، وليس كشف أرباح نهائياً: لا تُحسب كلفة البضاعة المباعة أو الربح الصافي إلا بعد ربط تكلفة كل قطعة بالمبيعات.</div>';
-  h.querySelectorAll("[data-report-detail]").forEach(b=>b.onclick=()=>{const key=b.dataset.reportDetail,rows=detailRows[key]||[];h.querySelectorAll("[data-report-detail]").forEach(x=>x.style.outline=x===b?"2px solid var(--accent)":"");$("reportDetails").innerHTML='<div class="sectionhead"><h2>'+titles[key]+'</h2><span class="tag">'+rows.length+' عملية</span></div><div class="tablewrap"><table><thead><tr>'+detailHeaders[key]+'</tr></thead><tbody>'+(rows.length?rows.join(""):'<tr><td colspan="6" class="muted">ما في عمليات بهيدا التاريخ</td></tr>')+'</tbody></table></div>'});
-  $("showReportDate").onclick=()=>{const value=$("reportDate").value;if(!value)return msg("reportDate","اختار التاريخ");render(value)};
+  h.innerHTML='<div class="panel"><div class="sectionhead"><h2>التقارير اليومية والصندوق</h2><span class="tag">'+esc(branches.find(b=>b.id===branchId)?.name||"")+'</span></div><p class="muted">اختار التاريخ. رصيد Top Up جزء من إجمالي الصندوق، مع إظهار رصيده منفصلاً للتوضيح.</p><div class="formgrid"><div><label>تاريخ التقرير</label><input id="reportDate" type="date" value="'+day+'"></div><div style="display:flex;align-items:end"><button class="btn" id="showReportDate">عرض التقرير</button></div></div></div>'+
+  '<div class="panel"><div class="sectionhead"><h2>الأرصدة الافتتاحية</h2><span class="tag">'+(o.row?"محفوظ":"يُرحّل من إقفال اليوم السابق")+'</span></div><div class="formgrid">'+
+  '<div><label>الصندوق الافتتاحي بالدولار</label><input id="openUsd" type="number" min="0" step=".01" value="'+o.cashUsd.toFixed(2)+'"></div><div><label>الصندوق الافتتاحي بالليرة</label><input id="openLbp" type="number" min="0" step="1" value="'+o.cashLbp.toFixed(0)+'"></div>'+
+  '<div><label>رصيد Top Up الافتتاحي بالدولار</label><input id="openTopUsd" type="number" min="0" step=".01" value="'+o.topUsd.toFixed(2)+'"></div><div><label>رصيد Top Up الافتتاحي بالليرة</label><input id="openTopLbp" type="number" min="0" step="1" value="'+o.topLbp.toFixed(0)+'"></div></div>'+
+  (can("cash.create")?'<button class="btn green" id="saveOpening" style="margin-top:12px">حفظ الأرصدة الافتتاحية</button><div id="openingMsg" class="msg"></div>':'<p class="muted">تحتاج صلاحية حركة الصندوق لتعديل الرصيد الافتتاحي.</p>')+'</div>'+
+  '<div class="grid"><div class="panel"><div class="muted">إجمالي الافتتاحي USD</div><h2>$'+openingUsd.toFixed(2)+'</h2><div class="muted">يشمل Top Up: $'+o.topUsd.toFixed(2)+'</div></div><div class="panel"><div class="muted">إجمالي الافتتاحي LBP</div><h2>'+openingLbp.toLocaleString("en-US")+' ل.ل</h2><div class="muted">يشمل Top Up: '+o.topLbp.toLocaleString("en-US")+' ل.ل</div></div></div>'+
+  '<div class="panel"><h2>حركة اليوم</h2><div class="grid"><div><div class="muted">وارد USD</div><b>$'+m.usdIn.toFixed(2)+'</b></div><div><div class="muted">صادر USD</div><b>$'+m.usdOut.toFixed(2)+'</b></div><div><div class="muted">وارد LBP</div><b>'+m.lbpIn.toLocaleString("en-US")+' ل.ل</b></div><div><div class="muted">صادر LBP</div><b>'+m.lbpOut.toLocaleString("en-US")+' ل.ل</b></div></div></div>'+
+  '<div class="grid"><div class="panel"><div class="muted">إقفال الصندوق USD</div><h2>$'+close.usd.toFixed(2)+'</h2></div><div class="panel"><div class="muted">إقفال الصندوق LBP</div><h2>'+close.lbp.toLocaleString("en-US")+' ل.ل</h2></div></div>'+
+  '<div class="panel"><h2>ملخص التعبئة</h2><div class="grid"><div><div class="muted">بيع دولارات · الكلفة</div><b>$'+sum(m.dollars,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.dollars,"sell_price_usd").toFixed(2)+' · '+sum(m.dollars,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div><div><div class="muted">بيع أشهر · الكلفة</div><b>$'+sum(m.months,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.months,"sell_price_usd").toFixed(2)+' · '+sum(m.months,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div><div><div class="muted">بيع كروت · الكلفة</div><b>$'+sum(m.cards,"cost_usd").toFixed(2)+'</b><div class="muted">مبيع $'+sum(m.cards,"sell_price_usd").toFixed(2)+' · '+sum(m.cards,"sell_price_lbp",x=>x.sell_currency==="LBP").toLocaleString("en-US")+' ل.ل</div></div></div></div>'+
+  '<div class="panel"><div class="sectionhead"><h2>ملخص اليوم</h2><span class="tag">'+(m.ds.length+m.dp.length+m.de.length+m.dt.length+m.dc.length)+' حركة</span></div><div class="grid">'+
+  '<button type="button" class="panel" data-report-detail="sales"><div class="muted">المبيعات المكتملة</div><h2>'+m.ds.length+' فاتورة</h2><b>$'+sum(m.ds,"total_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="purchases"><div class="muted">المشتريات</div><h2>'+m.dp.length+' فاتورة</h2><b>$'+m.usdPurchase.toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="expenses"><div class="muted">المصاريف المعتمدة</div><h2>$'+m.usdExpenses.toFixed(2)+'</h2><div class="muted">'+m.lbpExpenses.toLocaleString("en-US")+' ل.ل · بانتظار: $'+usdPending.toFixed(2)+' / '+lbpPending.toLocaleString("en-US")+' ل.ل</div></button>'+
+  '<button type="button" class="panel" data-report-detail="dollars"><div class="muted">بيع دولارات</div><h2>'+m.dollars.length+' عملية</h2><b>كلفة $'+sum(m.dollars,"cost_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="months"><div class="muted">بيع أشهر</div><h2>'+m.months.length+' عملية</h2><b>كلفة $'+sum(m.months,"cost_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="cards"><div class="muted">بيع كروت</div><h2>'+m.cards.length+' عملية</h2><b>كلفة $'+sum(m.cards,"cost_usd").toFixed(2)+'</b></button>'+
+  '<button type="button" class="panel" data-report-detail="cash"><div class="muted">ربح التعبئة بالدولار</div><h2>$'+topupProfitUsd.toFixed(2)+'</h2><div class="muted">قبل المصاريف العامة، ولا يشمل ربح البضاعة</div></button></div></div>'+
+  '<div class="panel" id="reportDetails"><div class="muted">اكبس على أي قسم لعرض التفاصيل.</div></div>'+
+  '<div class="panel notice">إقفال الصندوق محسوب من المقبوضات الفعلية، التعبئة، المشتريات، المصاريف المعتمدة وحركات الصندوق والمرتجعات. ربح الأجهزة والإكسسوارات النهائي يحتاج حفظ كلفة القطعة وقت البيع؛ لذلك ما رح أعرض رقم ربح إجمالي مضلّل. المصاريف المعلّقة لا تُخصم قبل اعتمادها.</div>';
+  h.querySelectorAll("[data-report-detail]").forEach(btn=>btn.onclick=()=>{const key=btn.dataset.reportDetail,rows=detailRows[key]||[];h.querySelectorAll("[data-report-detail]").forEach(x=>x.style.outline=x===btn?"2px solid var(--accent)":"");$("reportDetails").innerHTML='<div class="sectionhead"><h2>'+titles[key]+'</h2><span class="tag">'+rows.length+' عملية</span></div><div class="tablewrap"><table><thead><tr>'+detailHeaders[key]+'</tr></thead><tbody>'+(rows.length?rows.join(""):'<tr><td colspan="6" class="muted">ما في عمليات بهيدا التاريخ</td></tr>')+'</tbody></table></div>'});
+  $("showReportDate").onclick=()=>{const v=$("reportDate").value;if(v)render(v)};
   $("reportDate").onchange=()=>{if($("reportDate").value)render($("reportDate").value)};
+  if($("saveOpening"))$("saveOpening").onclick=async()=>{
+   const b=$("saveOpening");b.disabled=true;
+   try{
+    const vals={opening_usd:Number($("openUsd").value),opening_lbp:Number($("openLbp").value),opening_topup_usd:Number($("openTopUsd").value),opening_topup_lbp:Number($("openTopLbp").value)};
+    if(Object.values(vals).some(v=>!Number.isFinite(v)||v<0))throw Error("أدخل أرصدة صحيحة وغير سالبة");
+    const payload={branch_id:branchId,register_date:day,...vals,updated_by:user.id};
+    let result;
+    if(o.row)result=await db.from("daily_cash_registers").update(payload).eq("id",o.row.id);
+    else result=await db.from("daily_cash_registers").insert({...payload,created_by:user.id});
+    if(result.error)throw result.error;
+    await reportsPage(h);
+    const notice=$("openingMsg");if(notice)msg("openingMsg","تم حفظ رصيد اليوم. سيُرحّل إقفال اليوم تلقائياً لليوم التالي.",true);
+   }catch(err){msg("openingMsg",err.message)}finally{b.disabled=false}
+  };
  };
  render(today);
 }
