@@ -412,14 +412,14 @@ async function returnsPage(h){
   const b=$("findRetCode"),term=$("retCode").value.trim();if(!term)return msg("retSearchMsg","اكتب باركود أو IMEI/Serial أو اسم الصنف أولاً");
   b.disabled=true;msg("retSearchMsg","عم نفتّش بسجل المبيعات...");
   try{
-   let product=null,rows=[];
+   let product=null,rows=[],matchedIdentifier=null;
    const {data:byBarcode,error:be}=await db.from("products").select("id,name,barcode,tracking_type").eq("barcode",term).limit(1);if(be)throw be;
    product=byBarcode?.[0]||null;
    if(product)rows=await loadSaleRows(product.id,null);
    if(!rows.length){
     const {data:units,error:ue}=await db.from("product_units").select("product_id,sale_item_id,identifier").eq("branch_id",branchId).eq("identifier",term).eq("status","sold").limit(5);if(ue)throw ue;
     const ids=(units||[]).map(x=>x.sale_item_id).filter(Boolean);
-    if(ids.length){$("retIdentifier").value=term;const {data,error}=await db.from("sale_items").select("id,sale_id,product_id,description,quantity,unit_price_usd,serial_number,product:products(name,tracking_type),sale:sales!inner(id,invoice_no,customer_name,created_at,branch_id,status)").in("id",ids).eq("sale.branch_id",branchId).eq("sale.status","completed");if(error)throw error;rows=data||[];product=rows[0]?.product||product}
+    if(ids.length){matchedIdentifier=term;const {data,error}=await db.from("sale_items").select("id,sale_id,product_id,description,quantity,unit_price_usd,serial_number,product:products(name,tracking_type),sale:sales!inner(id,invoice_no,customer_name,created_at,branch_id,status)").in("id",ids).eq("sale.branch_id",branchId).eq("sale.status","completed");if(error)throw error;rows=data||[];product=rows[0]?.product||product}
    }
    if(!rows.length&&!product){
     const {data,error}=await db.from("products").select("id,name,barcode,tracking_type").ilike("name","%"+term.replace(/[%_]/g,"")+"%").limit(10);if(error)throw error;
@@ -427,6 +427,7 @@ async function returnsPage(h){
     rows=all;
    }
    await renderSaleMatches(rows,product?.name||term);
+   if(matchedIdentifier)$("retIdentifier").value=matchedIdentifier;
    msg("retSearchMsg","تم العثور على فواتير البيع المطابقة. اختار البند المطلوب.",true);
   }catch(e){msg("retSearchMsg",e.message)}finally{b.disabled=false}
  };
