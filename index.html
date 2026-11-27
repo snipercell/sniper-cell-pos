@@ -404,7 +404,7 @@ async function returnsPage(h){
   let q=db.from("sale_items").select("id,sale_id,product_id,description,quantity,unit_price_usd,serial_number,product:products(name,tracking_type),sale:sales!inner(id,invoice_no,customer_name,created_at,branch_id,status)").eq("sale.branch_id",branchId).eq("sale.status","completed");
   if(productId)q=q.eq("product_id",productId);
   if(identifier)q=q.eq("serial_number",identifier);
-  const {data,error}=await q.order("created_at",{foreignTable:"sale",ascending:false}).limit(200);
+  const {data,error}=await q.limit(200);
   if(error)throw error;
   return data||[];
  };
