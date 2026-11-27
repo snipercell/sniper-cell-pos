@@ -671,7 +671,7 @@ async function reportsPage(h){
   db.from("sales").select("id,total_usd,total_lbp,status,created_at").eq("branch_id",branchId).eq("status","completed"),
   db.from("purchases").select("id,total_usd,created_at").eq("branch_id",branchId),
   db.from("expenses").select("amount,currency,status,created_at").eq("branch_id",branchId),
-  db.from("topups").select("card_amount_usd,cost_usd,created_at").eq("branch_id",branchId),
+  db.from("topups").select("category,provider,card_amount_usd,cost_usd,sell_price_usd,created_at").eq("branch_id",branchId),
   db.from("cash_transactions").select("direction,amount,currency,created_at").eq("branch_id",branchId)
  ]);
  if(se)throw se;if(pe)throw pe;if(ee)throw ee;if(te)throw te;if(ce)throw ce;
@@ -690,7 +690,7 @@ async function reportsPage(h){
  '<div class="panel"><div class="muted">فواتير المشتريات</div><h2>'+purchases.length+'</h2><b>$'+sum(purchases,"total_usd").toFixed(2)+'</b><div class="muted">قيمة الشراء المسجلة</div></div>'+
  '<div class="panel"><div class="muted">مصاريف معتمدة — USD</div><h2>$'+usdApproved.toFixed(2)+'</h2><div class="muted">مصاريف بانتظار المراجعة: $'+usdPending.toFixed(2)+'</div></div>'+
  '<div class="panel"><div class="muted">مصاريف معتمدة — LBP</div><h2>'+lbpApproved.toLocaleString("en-US")+' ل.ل</h2><div class="muted">مصاريف بانتظار المراجعة: '+lbpPending.toLocaleString("en-US")+' ل.ل</div></div>'+
- '<div class="panel"><div class="muted">عمليات التعبئة</div><h2>'+topups.length+'</h2><b>الكلفة: $'+sum(topups,"cost_usd").toFixed(2)+'</b></div>'+
+ '<div class="panel"><div class="muted">عمليات التعبئة</div><h2>'+topups.length+'</h2><b>المبيع: $ '+sum(topups,"sell_price_usd").toFixed(2)+'</b><div class="muted">الكلفة: $ '+sum(topups,"cost_usd").toFixed(2)+' · الربح: $ '+(sum(topups,"sell_price_usd")-sum(topups,"cost_usd")).toFixed(2)+'</div><div class="muted">أيام: '+topups.filter(x=>x.category==="days").length+' · أشهر: '+topups.filter(x=>x.category==="months").length+' · كروت: '+topups.filter(x=>(x.category||"cards")==="cards").length+'</div></div>'+
  '<div class="panel"><div class="muted">صافي حركة الصندوق — USD</div><h2>$'+(usdIn-usdOut).toFixed(2)+'</h2><div class="muted">وارد $'+usdIn.toFixed(2)+' · صادر $'+usdOut.toFixed(2)+'</div></div>'+
  '<div class="panel"><div class="muted">صافي حركة الصندوق — LBP</div><h2>'+(lbpIn-lbpOut).toLocaleString("en-US")+' ل.ل</h2><div class="muted">وارد '+lbpIn.toLocaleString("en-US")+' · صادر '+lbpOut.toLocaleString("en-US")+' ل.ل</div></div></div>'+
  '<div class="panel notice">هذا تقرير حركة تشغيلية وليس كشف أرباح نهائياً: قيمة المشتريات قد تبقى ضمن المخزون، ولا تُحسب كلفة البضاعة المباعة أو الربح الصافي إلا بعد ربط تكلفة كل قطعة بالمبيعات.</div>';
