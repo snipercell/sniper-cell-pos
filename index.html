@@ -756,7 +756,7 @@ async function reportsPage(h){
   const close=balances({cashUsd:o.cashUsd,cashLbp:o.cashLbp,topUsd:o.topUsd,topLbp:o.topLbp},day);
   const closingUsd=close.cashUsd+close.topUsd,closingLbp=close.cashLbp+close.topLbp;
   const usdPending=sum(byDate(expenses,day),"amount",x=>x.status==="pending"&&x.currency==="USD"),lbpPending=sum(byDate(expenses,day),"amount",x=>x.status==="pending"&&x.currency==="LBP");
-  const topupProfitUsd=m.dt.reduce((n,x)=>n+(x.exchange_rate&&Number(x.exchange_rate)>0?Number(x.sell_price_lbp||0)/Number(x.exchange_rate):Number(x.sell_price_usd||0))-Number(x.cost_usd||0),0);
+  const topupProfitUsd=m.dt.reduce((n,x)=>{if(x.exchange_rate&&Number(x.exchange_rate)>0)return n+Number(x.sell_price_lbp||0)/Number(x.exchange_rate)-Number(x.cost_usd||0);if(x.sell_currency==="USD")return n+Number(x.sell_price_usd||0)-Number(x.cost_usd||0);return n;},0);
   const detailRows={
    sales:m.ds.map(x=>'<tr><td><button type="button" class="btn ghost" data-invoice-open="'+esc(x.id)+'" data-invoice-type="sale">'+esc(x.invoice_no||x.id||"—")+'</button></td><td>$'+Number(x.total_usd||0).toFixed(2)+'</td><td>'+Number(x.total_lbp||0).toLocaleString("en-US")+' ل.ل</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
    purchases:m.dp.map(x=>'<tr><td><button type="button" class="btn ghost" data-invoice-open="'+esc(x.id)+'" data-invoice-type="purchase">'+esc(x.invoice_no||"—")+'</button></td><td>'+esc(x.supplier?.name||"—")+'</td><td>$'+Number(x.total_usd||0).toFixed(2)+'</td><td>'+moneyDate(x.created_at)+'</td></tr>'),
