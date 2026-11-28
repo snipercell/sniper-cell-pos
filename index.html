@@ -599,7 +599,7 @@ async function topupsPage(h){
     '</tbody></table></div></div>';
   h.querySelectorAll("[data-topup-cat]").forEach(b=>b.onclick=()=>{activeCategory=b.dataset.topupCat;render()});
   const cost=$("tCost"),sell=$("tSell"),qty=$("tQty"),monthsInput=$("tMonths"),amountInput=$("tAmount"),totals=$("tTotals"),payUsd=$("tPayUsd"),payLbp=$("tPayLbp"),rateInput=$("tRate");
-  const updateTotals=()=>{if(!totals)return;const q=activeCategory==="cards"?Math.max(1,Number(qty?.value)||1):1,c=(Number(cost?.value)||0)*q,unitSell=activeCategory==="dollars"?Number(amountInput?.value||2)*100000:activeCategory==="months"?Number(monthsInput?.value||1)*300000:Number(sell?.value||0)*1000,v=unitSell,rate=Number(rateInput?.value)||0,usd=Math.max(0,Number(payUsd?.value)||0),lbp=Math.max(0,Number(payLbp?.value)||0)*1000,paid=usd*rate+lbp,diff=v-paid;let status=rate>0?(diff>0?" · المتبقي "+Math.ceil(diff).toLocaleString("en-US")+" ل.ل":diff<0?" · زيادة الدفع "+Math.round(-diff).toLocaleString("en-US")+" ل.ل":" · مدفوع بالكامل"):" · أدخل سعر الصرف";totals.textContent="الإجمالي: كلفة $"+c.toFixed(2)+" · مبيع "+v.toLocaleString("en-US")+" ل.ل · المقبوض $"+usd.toFixed(2)+" + "+lbp.toLocaleString("en-US")+" ل.ل"+status};
+  const updateTotals=()=>{if(!totals)return;const q=activeCategory==="cards"?Math.max(1,Number(qty?.value)||1):1,c=(Number(cost?.value)||0)*q,unitSell=activeCategory==="dollars"?Number(amountInput?.value||2)*100000:activeCategory==="months"?Number(monthsInput?.value||1)*300000:Number(sell?.value||0)*1000,v=activeCategory==="cards"?unitSell*q:unitSell,rate=Number(rateInput?.value)||0,usd=Math.max(0,Number(payUsd?.value)||0),lbp=Math.max(0,Number(payLbp?.value)||0)*1000,paid=usd*rate+lbp,diff=v-paid;let status=rate>0?(diff>0?" · المتبقي "+Math.ceil(diff).toLocaleString("en-US")+" ل.ل":diff<0?" · زيادة الدفع "+Math.round(-diff).toLocaleString("en-US")+" ل.ل":" · مدفوع بالكامل"):" · أدخل سعر الصرف";totals.textContent="الإجمالي: كلفة $"+c.toFixed(2)+" · مبيع "+v.toLocaleString("en-US")+" ل.ل · المقبوض $"+usd.toFixed(2)+" + "+lbp.toLocaleString("en-US")+" ل.ل"+status};
   [cost,sell,qty,monthsInput,amountInput,payUsd,payLbp,rateInput].filter(Boolean).forEach(el=>el.addEventListener("input",updateTotals));updateTotals();
   if(!$("saveTopup"))return;
   $("saveTopup").onclick=async()=>{
@@ -609,7 +609,7 @@ async function topupsPage(h){
     const unitCost=Number($("tCost").value),unitSell=activeCategory==="dollars"?Number($("tAmount").value)*100000:activeCategory==="months"?Number($("tMonths").value)*300000:Number($("tSell").value)*1000,rate=Number($("tRate").value),paidUsd=Number($("tPayUsd").value),paidLbp=Number($("tPayLbp").value)*1000;
     if(!Number.isInteger(quantity)||quantity<1)throw Error("أدخل كمية صحيحة");
     if(!Number.isFinite(unitCost)||unitCost<0||!Number.isFinite(unitSell)||unitSell<0||!Number.isFinite(rate)||rate<=0||!Number.isFinite(paidUsd)||paidUsd<0||!Number.isFinite(paidLbp)||paidLbp<0)throw Error("تحقّق من الكلفة والسعر وسعر الصرف والدفعات");
-    const totalLbp=unitSell;if(paidUsd*rate+paidLbp+0.0001<totalLbp)throw Error("المبلغ المدفوع أقل من إجمالي التعبئة");
+    const totalLbp=activeCategory==="cards"?unitSell*quantity:unitSell;if(paidUsd*rate+paidLbp+0.0001<totalLbp)throw Error("المبلغ المدفوع أقل من إجمالي التعبئة");
      const phone=null;
     const days=null;
     const months=activeCategory==="months"?Number($("tMonths").value):null;
